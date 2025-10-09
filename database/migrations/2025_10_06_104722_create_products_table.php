@@ -18,6 +18,7 @@ return new class extends Migration
             $table->unsignedBigInteger('brand_id')->index()->nullable();
             $table->decimal('price', 10, 2);
             $table->decimal('discount_price', 10, 2)->nullable();
+            $table->integer('discount_stock')->nullable();
             $table->boolean('is_discount_active')->default(false);
             $table->json('image')->nullable();
             $table->decimal('weight', 8, 2)->nullable();
