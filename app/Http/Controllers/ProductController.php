@@ -4,62 +4,29 @@ namespace App\Http\Controllers;
 
 use App\Models\Product;
 use Illuminate\Http\Request;
+use App\Http\Requests\StoreProductRequest;
+use Illuminate\Support\Str;
+
+
 
 class ProductController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
-    {
-        //
-    }
+    public function createProduct(StoreProductRequest $request){
+        try{
+            $slug = Str::slug($request->name);
+            $slugCount= Product::where('slug','LIKE',"{$slug}%")->count();
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
-    }
+            if($slugCount>0){
+                $slug.='-'. ($slugCount+1);
+            }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
-    {
-        //
-    }
+            $data = $request->validated();
+            Product::create([...$data, 'slug'=>$slug]);
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(Product $product)
-    {
-        //
-    }
+            return response()->json('Ürün oluşturuldu.',200);
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Product $product)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, Product $product)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Product $product)
-    {
-        //
+        }catch(\Exception $e){
+            return response()->json(['error'=>$e->getMessage()],500);
+        }
     }
 }
