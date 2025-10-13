@@ -22,6 +22,7 @@ class StoreProductRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'id'=>'exists:products,id',
             'name'=>'required|max:75',
             'category_id'=>'required|exists:categories,id',
             'brand_id'=>'nullable|exists:brands,id',
@@ -48,6 +49,7 @@ class StoreProductRequest extends FormRequest
 
             'price.required'=>'Fiyat alanı zorunludur.',
             'price.numeric'=>'Fiyat alanı sayılardan oluşmalıdır.',
+            'stock.required'=>'Stok alanı zorunludur',
             'discount_price.lt' => 'İndirimli fiyat, normal fiyattan düşük olmalıdır.',
             'discount_price.numeric' => 'İndirimli stok sayısal bir değer olmalıdır.',
 
