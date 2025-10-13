@@ -4,62 +4,69 @@ namespace App\Http\Controllers;
 
 use App\Models\Advert;
 use Illuminate\Http\Request;
+use App\Http\Requests\AdvertRequest;
+use App\Http\Requests\UpdateAdvertRequest;
 
 class AdvertController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
-    {
-        //
+    public function createAdvert(AdvertRequest $request){
+
+        try {
+            $data = $request->validated();
+            $product_id=$data['product_id'];
+           
+            if(Advert::where('product_id',$product_id)->exists()){
+                return response()->json(['message'=>'Ürün için ilan oluşturulmuş'],400);
+
+            }
+
+            $advert=Advert::create($data);
+
+            return response()->json(['message'=>'İlan oluşturuldu','advert'=>$advert],200);
+
+        } catch (\Exception $e) {
+             return response()->json(['error'=>$e->getMessage()],500);
+
+        }
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
+    public function updateAdvert(UpdateAdvertRequest $request,$id){
+        try {
+            $data = $request->validated();
+
+            $advert = Advert::findOrFail($id);
+
+            $advert->update($data);
+            return response()->json(['message'=>'Güncelleme başarılı.','advert'=>$advert],200);
+
+        } catch (\Exception $e) {
+            return response()->json(['error'=>$e->getMessage()],500);
+
+        }
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
-    {
-        //
+    public function getAdverts(){
+        try {
+            $adverts = Advert::with('product')->orderBy('created_at','desc')->get();
+            return response()->json(['adverts'=>$adverts],200);
+
+        } catch (\Exception $e) {
+            return response()->json(['error'=>$e->getMessage()],500);
+        }
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(Advert $advert)
-    {
-        //
+    public function deleteAdvert($id){
+        try {
+            $advert = Advert::findOrFail($id);
+            $advert->delete();
+            return response()->json(['message'=>'Ürün silindi.'],200);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json(['error'=>'İlan bulunamadı.'],404);
+        } catch (\Exception $e) {
+            return response()->json(['error'=>$e->getMessage()],500);
+        }
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Advert $advert)
-    {
-        //
-    }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, Advert $advert)
-    {
-        //
-    }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Advert $advert)
-    {
-        //
-    }
 }
