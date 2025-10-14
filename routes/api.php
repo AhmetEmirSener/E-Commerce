@@ -4,6 +4,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\AdvertController;
+use App\Http\Controllers\UserController;
+use App\Http\Controllers\UserOtpController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -27,3 +29,11 @@ Route::put('/updateAdvert/{id}',[AdvertController::class,'updateAdvert']);
 Route::get('/getAdverts',[AdvertController::class,'getAdverts']);
 
 Route::delete('/deleteAdvert/{id}',[AdvertController::class,'deleteAdvert']);
+//ADVERT
+
+//USER
+Route::post('/register/{verified_token}',[UserController::class,'register']);
+Route::post('/sendOtp',[UserOtpController::class,'sendOtp']);
+Route::post('/verifyOtp/{token}',[UserOtpController::class,'verifyOtp']);
+
+
