@@ -23,6 +23,7 @@ class RegisterRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'token'=>'string',
             'name'=>'required|max:25|string',
             'surname'=>'required|max:30|string',
             'phone_number' => 'unique:users,phone_number',

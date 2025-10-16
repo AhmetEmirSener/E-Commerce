@@ -32,8 +32,12 @@ Route::delete('/deleteAdvert/{id}',[AdvertController::class,'deleteAdvert']);
 //ADVERT
 
 //USER
-Route::post('/register/{verified_token}',[UserController::class,'register']);
+Route::post('/register',[UserController::class,'register']);
 Route::post('/sendOtp',[UserOtpController::class,'sendOtp']);
-Route::post('/verifyOtp/{token}',[UserOtpController::class,'verifyOtp']);
+Route::post('/verifyOtp',[UserOtpController::class,'verifyOtp']);
+
+Route::post('/login',[UserController::class,'login']);
+
+Route::post('/logout',[UserController::class,'logout']);
 
 

@@ -5,6 +5,7 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use App\Models\User;
 
 use Illuminate\Http\Request;
 
@@ -13,6 +14,10 @@ class UserOtpController extends Controller
 
     public function sendOtp(Request $request){
         $phone = $request->phone_number;
+        $isRegisted= User::where('phone_number',$phone)->count();
+        if($isRegisted){
+            return response()->json(['message'=>'Telefon numarası kullanılıyor'],400);
+        }
         
         $rateKey = 'otp_rate'.$phone;
         if(Cache::has($rateKey)){
@@ -36,8 +41,9 @@ class UserOtpController extends Controller
     }
 
 
-    public function verifyOtp(Request $request,$token){
+    public function verifyOtp(Request $request){
         $code = $request->code;
+        $token = $request->token;
 
         $cacheKey= 'phone_verif'.$token;
         if(!Cache::has($cacheKey)){
