@@ -6,6 +6,7 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\AdvertController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\UserOtpController;
+use App\Http\Controllers\CartController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -39,5 +40,15 @@ Route::post('/verifyOtp',[UserOtpController::class,'verifyOtp']);
 Route::post('/login',[UserController::class,'login']);
 
 Route::post('/logout',[UserController::class,'logout']);
+//USER
+
+//CART
+Route::post('/storeCart',[CartController::class,'storeCart'])->middleware('auth:sanctum');
+
+Route::post('/deleteCart',[CartController::class,'deleteCart'])->middleware('auth:sanctum');
+
+Route::get('/getUsersCart',[CartController::class,'getUsersCart'])->middleware('auth:sanctum');
+
+
 
 
