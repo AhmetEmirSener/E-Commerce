@@ -3,63 +3,74 @@
 namespace App\Http\Controllers;
 
 use App\Models\Brand;
+use Illuminate\Support\Str;
 use Illuminate\Http\Request;
+use App\Http\Requests\StoreBrandRequest;
+use App\Http\Requests\UpdateBrandRequest;
 
 class BrandController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
-    {
-        //
+    public function createBrand(StoreBrandRequest $req){
+        try {
+            $data= $req->validated();
+            $slug = Str::slug($data['name']);
+            $slugCount= Brand::where('slug','LIKE',"{$slug}%")->count();
+            if($slugCount){
+                $slug.='-'.($slugCount+1);
+            }
+            $brand=Brand::create([...$data,'slug'=>$slug]);
+            return response()->json(['message'=>'Marka oluşturuldu',$brand]);
+
+        } catch (\Exception $e) {
+            return response()->json(['message'=>$e->getMessage()],500);
+        }
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
+
+    public function updateBrand(UpdateBrandRequest $req,$id ){
+        try {
+            $brand = Brand::findOrFail($id);
+            $data = $req->validated();
+
+            if (empty($data)) {
+                return response()->json(['message' => 'Güncellenecek veri bulunamadı.'], 400);
+            }
+
+            if(!empty($data['name'])){
+                $nameCount = Brand::where('name',$data['name'])->where('id','!=',$brand->id)->count();
+                if($nameCount>0) return response()->json(['message'=>'Marka adı zaten kayıtlı'],400);
+            }
+
+            if (!empty($data['name']) && $brand->name !== $data['name']) {
+                $slug = Str::slug($data['name']);
+                $slugCount = Brand::where('slug', 'LIKE', "{$slug}%")
+                                  ->where('id', '!=', $brand->id)
+                                  ->count();
+    
+                if ($slugCount) {
+                    $slug .= '-' . ($slugCount + 1);
+                }
+    
+                $data['slug'] = $slug;
+            }
+            
+            $brand->update($data);
+            return response()->json(['message'=>'Marka güncellendi','brand'=>$brand]);
+
+        } catch (\Exception $e) {
+            return response()->json(['message'=>$e->getMessage()],500);
+        }
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
-    {
-        //
-    }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(Brand $brand)
-    {
-        //
-    }
+    public function getBrands(){
+        try {
+            $brands = Brand::where('status','Aktif')->get();
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Brand $brand)
-    {
-        //
-    }
+            return response()->json(['data'=>$brands],200);
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, Brand $brand)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Brand $brand)
-    {
-        //
+        } catch (\Exception $e) {
+            return response()->json(['message'=>$e->getMessage()],500);
+        }
     }
 }

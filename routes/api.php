@@ -9,6 +9,7 @@ use App\Http\Controllers\UserOtpController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\UserAddressController;
 use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\BrandController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -67,6 +68,20 @@ Route::get('/getUsersCart',[CartController::class,'getUsersCart'])->middleware('
 
 //Check before order
 Route::get('/prepareOrder',[PaymentController::class,'prepareOrder'])->middleware('auth:sanctum');
+
+
+
+
+
+
+// BRAND 
+
+Route::post('/createBrand',[BrandController::class,'createBrand']);
+
+Route::put('/updateBrand/{id}',[BrandController::class,'updateBrand']);
+
+Route::get('/getBrands',[BrandController::class,'getBrands']);
+
 
 
 
