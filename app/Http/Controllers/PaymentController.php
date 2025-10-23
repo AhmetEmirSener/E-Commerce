@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Cart;
 use App\Models\CargoFee;
+use Stripe\Stripe;
 
+use Stripe\PaymentIntent;
 
 use Illuminate\Http\Request;
 
@@ -72,4 +74,67 @@ class PaymentController extends Controller
         }
 
     }
-}
+
+    public function preparePayment(Request $request){
+
+        try {
+
+            $user = Auth::user();
+
+            $userCart = Cart::where('user_id',$user->id)->where('is_selected',1)->get();
+
+            $total = $userCart->sum('total');
+
+
+
+            $order= Order::create([
+
+                'user_id'=>$user->id,
+
+                'ordered_at'=>now(),
+
+                'users_address_id'=>3,   //$request->selected_address,
+
+                'total'=>$total,
+
+                'payment_status'=>'pending'
+
+            ]);
+
+
+
+            \Stripe\Stripe::setApiKey(config('services.stripe.secret'));
+
+            $intent= \Stripe\PaymentIntent::create([
+
+                'amount'=>intval(round($total*100)),
+
+                'currency'=>'try',
+
+                'metadata'=>['order_id'=>$order->id],
+
+
+
+            ]);
+
+
+
+            return response()->json([
+
+                'order_id'=>$order->id,
+
+                'client_secret'=>$intent->client_secret,
+
+                'total'=>$total,
+
+            ]);
+
+
+
+        }catch (\Exception $e) {
+
+            return response()->json(['message'=>$e->getMessage()],500);
+
+        }
+
+    }}
