@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Cart;
 use App\Models\CargoFee;
+use App\Models\Order;
+
 use Stripe\Stripe;
 
 use Stripe\PaymentIntent;

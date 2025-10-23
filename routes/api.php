@@ -69,7 +69,7 @@ Route::get('/getUsersCart',[CartController::class,'getUsersCart'])->middleware('
 //Check before order
 Route::get('/prepareOrder',[PaymentController::class,'prepareOrder'])->middleware('auth:sanctum');
 
-
+Route::post('/preparePayment',[PaymentController::class,'preparePayment'])->middleware('auth:sanctum');
 
 
 
