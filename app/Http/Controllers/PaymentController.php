@@ -7,7 +7,6 @@ use App\Models\CargoFee;
 use App\Models\Order;
 
 use Stripe\Stripe;
-
 use Stripe\PaymentIntent;
 
 use Illuminate\Http\Request;
@@ -82,53 +81,43 @@ class PaymentController extends Controller
         try {
 
             $user = Auth::user();
-
             $userCart = Cart::where('user_id',$user->id)->where('is_selected',1)->get();
 
+            if($userCart->isEmpty()){
+                return response()->json(['message'=>'Sepetiniz boş.'],400);
+            }
+
             $total = $userCart->sum('total');
-
-
+            
+            if ($total <= 0) {
+                return response()->json(['message' => 'Geçersiz toplam tutar.'], 400);
+            }
 
             $order= Order::create([
 
                 'user_id'=>$user->id,
-
                 'ordered_at'=>now(),
-
                 'users_address_id'=>3,   //$request->selected_address,
-
                 'total'=>$total,
-
                 'payment_status'=>'pending'
 
             ]);
 
 
 
-            \Stripe\Stripe::setApiKey(config('services.stripe.secret'));
-
-            $intent= \Stripe\PaymentIntent::create([
-
+            Stripe::setApiKey(env('STRIPE_SECRET'));
+            $intent= PaymentIntent::create([
                 'amount'=>intval(round($total*100)),
-
                 'currency'=>'try',
-
                 'metadata'=>['order_id'=>$order->id],
-
-
-
             ]);
 
 
 
             return response()->json([
-
                 'order_id'=>$order->id,
-
                 'client_secret'=>$intent->client_secret,
-
                 'total'=>$total,
-
             ]);
 
 
