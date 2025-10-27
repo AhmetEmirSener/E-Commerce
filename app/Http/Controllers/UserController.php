@@ -83,7 +83,7 @@ class UserController extends Controller
                 'message'=>'Giriş başarılı',
                 'user'=>$user,
                 'token'=>$token //postman testi icin
-            ],200)->withCookie($cookie);
+            ],200)->withCookie($cookie); //cookie
 
           
 
