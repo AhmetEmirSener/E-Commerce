@@ -8,8 +8,8 @@ use App\Http\Requests\RegisterRequest;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Auth;
+use Tymon\JWTAuth\Facades\JWTAuth;
 use Illuminate\Support\Facades\Cookie;
-
 
 
 
@@ -64,19 +64,20 @@ class UserController extends Controller
                 return response()->json(['message'=>'Geçersiz giriş bilgileri'],401);
             }
             
-            $token = $user->createToken('access_token')->plainTextToken;
- 
+
+            $token = JWTAuth::fromUser($user);
+            
 
             $cookie = cookie(
                 'access_token',       // cookie adı
-                $token,         // değer
-                14400,                   // dakika cinsinden geçerlilik süresi (örnek: 60 dk)
-                null,                 // path (isteğe bağlı)
+                $token,               // token değeri
+                60 * 24,              // 24 saat geçerli
+                '/',                  // path
                 null,                 // domain
-                false,                 // secure http/https
-                true,                 // httpOnly — JS erişemez
+                false,                // secure
+                true,                 // httpOnly
                 false,                // raw
-                'Strict'              // SameSite
+                'Lax'              // SameSite
             );
 
             return response()->json([
@@ -96,18 +97,13 @@ class UserController extends Controller
 
     public function logout(Request $request){
         try {
-            $user = $request->user();
-            if(!$user){
-                return response()->json(['message'=>'Oturum doğrulanamadı!'],401);
-            }else{                
-                $user->currentAccessToken()->delete(); 
-            }
-
-            $cookie = cookie('access_token', '', -1, null, null, true, true, false, 'Strict'); 
-
-            return response()->json(['message'=>'Çıkış başarılı.'],200)->withCookie($cookie);
+            $token = $request->cookie('access_token');
+            
+            JWTAuth::setToken($token)->invalidate();
+            return response()->json(['message' => 'Çıkış yapıldı'], 200)
+                ->withoutCookie('access_token');
         } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
+            return response()->json(['message' => 'Çıkış yapılamadı', 'error' => $e->getMessage()], 500);
         }
     }
 

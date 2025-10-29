@@ -10,13 +10,14 @@ use App\Http\Controllers\CartController;
 use App\Http\Controllers\UserAddressController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\BrandController;
+use App\Http\Middleware\AuthMiddleware;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
 
 //PRODUCT 
-Route::get('/getProducts',[ProductController::class,'getProducts']);
+Route::get('/getProducts',[ProductController::class,'getProducts'])->middleware(AuthMiddleware::class);
 
 Route::post('/storeProduct',[ProductController::class,'createProduct']);
 
