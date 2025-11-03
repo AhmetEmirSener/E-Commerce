@@ -16,7 +16,7 @@ class PaymentController extends Controller
     public function prepareOrder(Request $request){
         try {
 
-            $userId = Auth::user()->id;
+            $userId = $request->get('auth_user')->id;
             $userCart = Cart::where('user_id',$userId)->where('is_selected',1)->with('product')->get();
             if ($userCart->isEmpty()) {
                 return response()->json(['message' => 'Sepetiniz boş.'], 400);
@@ -80,7 +80,7 @@ class PaymentController extends Controller
 
         try {
 
-            $user = Auth::user();
+            $user = $request->get('auth_user');
             $userCart = Cart::where('user_id',$user->id)->where('is_selected',1)->get();
 
             if($userCart->isEmpty()){
@@ -97,7 +97,7 @@ class PaymentController extends Controller
 
                 'user_id'=>$user->id,
                 'ordered_at'=>now(),
-                'users_address_id'=>3,   //$request->selected_address,
+                'users_address_id'=>4,   //$request->selected_address,
                 'total'=>$total,
                 'payment_status'=>'pending'
 

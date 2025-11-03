@@ -11,6 +11,8 @@ use App\Http\Controllers\UserAddressController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\BrandController;
 use App\Http\Middleware\AuthMiddleware;
+use App\Http\Controllers\StripeWebhookController;
+
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -68,12 +70,12 @@ Route::get('/getUsersCart',[CartController::class,'getUsersCart'])->middleware('
 
 
 //Check before order
-Route::get('/prepareOrder',[PaymentController::class,'prepareOrder'])->middleware('auth:sanctum');
+Route::get('/prepareOrder',[PaymentController::class,'prepareOrder'])->middleware(AuthMiddleware::class);
 
-Route::post('/preparePayment',[PaymentController::class,'preparePayment'])->middleware('auth:sanctum');
+Route::post('/preparePayment',[PaymentController::class,'preparePayment'])->middleware(AuthMiddleware::class);
 
 
-
+Route::post('/stripe/webhook',[StripeWebhookController::class,'handle']);
 
 // BRAND 
 
