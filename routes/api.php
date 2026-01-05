@@ -13,13 +13,16 @@ use App\Http\Controllers\BrandController;
 use App\Http\Middleware\AuthMiddleware;
 use App\Http\Controllers\StripeWebhookController;
 
+use App\Http\Controllers\SliderItemsController;
+use App\Http\Controllers\SliderController;
+
 
 Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
 
 //PRODUCT 
-Route::get('/getProducts',[ProductController::class,'getProducts'])->middleware(AuthMiddleware::class);
+Route::get('/getProducts',[ProductController::class,'getProducts']);
 
 Route::post('/storeProduct',[ProductController::class,'createProduct']);
 
@@ -88,3 +91,10 @@ Route::get('/getBrands',[BrandController::class,'getBrands']);
 
 
 
+// SLIDER 
+Route::post('createSlider',[SliderController::class,'store']);
+
+Route::post('createSliderItem',[SliderItemsController::class,'store']);
+
+
+Route::get('getSliderItem/{name}',[SliderController::class,'getSlider']);
