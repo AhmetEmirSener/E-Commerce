@@ -7,6 +7,8 @@ use App\Models\SliderItems;
 
 use Illuminate\Http\Request;
 use App\Http\Requests\StoreSlider;
+use App\Http\Resources\SliderResource;
+
 
 class SliderController extends Controller
 {
@@ -37,7 +39,7 @@ class SliderController extends Controller
                 return response()->json(['message'=>'Slider bulunamadı'],400);
             }
             
-            return response()->json($slider,200);
+            return SliderResource::collection($slider);
 
         } catch (\Exception $e) {
             return response()->json(['message'=>$e->getMessage()],500);
