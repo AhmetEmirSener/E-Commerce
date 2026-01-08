@@ -31,7 +31,6 @@ class StoreProductRequest extends FormRequest
             'discount_price'=>'nullable|numeric|min:0|lt:price',
             'discount_stock'=>'nullable|numeric|lte:stock',
             'is_discount_active'=>'nullable|boolean',
-            'image'=>'nullable|array',
             'status'=>'in:aktif,pasif,beklemede',
             'weight'=>'nullable|numeric'
             

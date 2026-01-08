@@ -3,25 +3,42 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
+use App\Models\ProductImage;
+
 use Illuminate\Http\Request;
 use App\Http\Requests\StoreProductRequest;
+
 use Illuminate\Support\Str;
+
+use App\Services\ImageUploadService;
+
+use App\Services\SlugCreateService;
 
 
 
 class ProductController extends Controller
 {
+
+    protected ImageUploadService $imageUploadService;
+    protected SlugCreateService $slugCreateService;
+
+    public function __construct(ImageUploadService $imageUploadService,SlugCreateService $slugCreateService){
+        $this->imageUploadService = $imageUploadService;
+        $this->slugCreateService=$slugCreateService;
+    }
+
+
+
     public function createProduct(StoreProductRequest $request){
         try{
-            $slug = Str::slug($request->name);
-            $slugCount= Product::where('slug','LIKE',"{$slug}%")->count();
-
-            if($slugCount>0){
-                $slug.='-'. ($slugCount+1);
-            }
-
             $data = $request->validated();
-            Product::create([...$data, 'slug'=>$slug]);
+
+            $data['slug']=$this->slugCreateService->createSlug($data,\App\Models\Product::class);
+
+            $product = Product::create($data);
+
+            $this->imageUploadService->imageUpload($request,$product,$data);
+         
 
             return response()->json(['message' => 'Ürün oluşturuldu.'], 200);
 
