@@ -31,7 +31,7 @@ class SliderController extends Controller
         try {
             $slider = Slider::where('page',$sliderName)->with([
                 'items',
-                'items.advert',
+                'items.advert.product',
                 'items.category'
             ])->get()->sortBy('sort');
 

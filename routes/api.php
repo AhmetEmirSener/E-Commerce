@@ -15,6 +15,7 @@ use App\Http\Controllers\StripeWebhookController;
 
 use App\Http\Controllers\SliderItemsController;
 use App\Http\Controllers\SliderController;
+use App\Http\Controllers\CampaignController;
 
 
 Route::get('/user', function (Request $request) {
@@ -98,3 +99,9 @@ Route::post('createSliderItem',[SliderItemsController::class,'store']);
 
 
 Route::get('getSliderItem/{name}',[SliderController::class,'getSlider']);
+
+
+
+// CAMPAIGN
+
+Route::post('createCampaign',[CampaignController::class,'createCampaign']);

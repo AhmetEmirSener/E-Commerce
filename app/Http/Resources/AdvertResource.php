@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use App\Http\Resources\ProductResource;
 
 class AdvertResource extends JsonResource
 {
@@ -25,7 +26,8 @@ class AdvertResource extends JsonResource
             'views'=>$this->views,
             'price'=>$this->price,
             'status'=>$this->status,
-            'is_featured'=>$this->is_featured
+            'is_featured'=>$this->is_featured,
+            'item_ref'=> new ProductResource($this->product)
         ];
     }
 }

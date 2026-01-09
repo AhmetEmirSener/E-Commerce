@@ -5,15 +5,20 @@ use App\Models\ProductImage;
 
 class ImageUploadService
 {
-   public function imageUpload($request,$product,$data=[]){
+   public function imageUpload($files,$product,$data=[]){
 
 
-    if($request->hasFile('image')){
+
         $sort=1;
         $isFirst = true;
-        foreach($request->file('image') as $file){
+        $mainImagePath = null;
+
+        foreach($files as $file){
             $path= $file->store('uploads','public');
 
+            if($isFirst){
+                $mainImagePath=$path;
+            }
             ProductImage::create([
                 'product_id'=>$product->id,
                 'path'=>$path,
@@ -24,7 +29,13 @@ class ImageUploadService
             $isFirst = false;
             $sort++;
         }
+        
+        if($mainImagePath){
+            $product->update([
+                'image'=>$mainImagePath
+            ]);
+        }
     }
 
-   }
+   
 }

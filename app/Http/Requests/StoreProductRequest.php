@@ -32,7 +32,9 @@ class StoreProductRequest extends FormRequest
             'discount_stock'=>'nullable|numeric|lte:stock',
             'is_discount_active'=>'nullable|boolean',
             'status'=>'in:aktif,pasif,beklemede',
-            'weight'=>'nullable|numeric'
+            'weight'=>'nullable|numeric',
+            'image' => 'nullable|array',
+            'image.*' => 'image|mimes:jpg,jpeg,png,webp',
             
         ];
     }

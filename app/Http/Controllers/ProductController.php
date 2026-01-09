@@ -34,10 +34,13 @@ class ProductController extends Controller
             $data = $request->validated();
 
             $data['slug']=$this->slugCreateService->createSlug($data,\App\Models\Product::class);
-
+            unset($data['image']);
             $product = Product::create($data);
+            
+            if($request->hasFile('image')){
+                $this->imageUploadService->imageUpload($request->file('image'),$product,$data);
 
-            $this->imageUploadService->imageUpload($request,$product,$data);
+            }
          
 
             return response()->json(['message' => 'Ürün oluşturuldu.'], 200);
