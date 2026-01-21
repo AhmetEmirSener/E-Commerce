@@ -25,7 +25,7 @@ class CampaignStoreRequest extends FormRequest
             'title'=>'required | string',
             'description'=>'string | nullable',
             'image' => 'nullable|image|mimes:jpg,jpeg,png,webp',
-            'mobile_image' => 'nullable| string',
+            'mobile_image' => 'nullable| image',
             'link'=>'string | nullable',
             'start_date'=>'date | nullable',
             'end_date'=>'date | nullable'

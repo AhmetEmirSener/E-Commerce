@@ -32,7 +32,8 @@ class SliderController extends Controller
             $slider = Slider::where('page',$sliderName)->with([
                 'items',
                 'items.advert.product',
-                'items.category'
+                'items.category',
+                'items.campaign'
             ])->get()->sortBy('sort');
 
             if(empty($slider)){

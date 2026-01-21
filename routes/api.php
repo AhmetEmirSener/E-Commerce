@@ -16,7 +16,7 @@ use App\Http\Controllers\StripeWebhookController;
 use App\Http\Controllers\SliderItemsController;
 use App\Http\Controllers\SliderController;
 use App\Http\Controllers\CampaignController;
-
+use App\Http\Controllers\CategoryController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -91,6 +91,10 @@ Route::get('/getBrands',[BrandController::class,'getBrands']);
 
 
 
+// CATEGORY 
+
+Route::post('/createCategory',[CategoryController::class,'storeCategory']);
+
 
 // SLIDER 
 Route::post('createSlider',[SliderController::class,'store']);
@@ -105,3 +109,4 @@ Route::get('getSliderItem/{name}',[SliderController::class,'getSlider']);
 // CAMPAIGN
 
 Route::post('createCampaign',[CampaignController::class,'createCampaign']);
+

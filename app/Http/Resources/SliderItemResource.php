@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use App\Http\Resources\CategoryResource;
 use App\Http\Resources\AdvertResource;
+use App\Http\Resources\CampaignResource;
 
 class SliderItemResource extends JsonResource
 {
@@ -25,6 +26,7 @@ class SliderItemResource extends JsonResource
             'ref' => match ($this->ref_type) {
                 'product', 'advert' => new AdvertResource($this->advert),
                 'category' => new CategoryResource($this->category),
+                'campaign'=> new CampaignResource($this->campaign),
                 default => null
             }
         ];
