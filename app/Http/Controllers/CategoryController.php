@@ -43,4 +43,15 @@ class CategoryController extends Controller
         }
     }
 
+    public function getCategories(){
+        try {
+            $categories =Category::where('parent_id',null)->with('getChild')->get();
+            
+            return CategoryResource::collection($categories);
+        
+        } catch (\Throwable $th) {
+            return response()->json(['error'=>$th->getMessage()],500);
+        }
+    }
+
 }

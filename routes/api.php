@@ -95,6 +95,7 @@ Route::get('/getBrands',[BrandController::class,'getBrands']);
 
 Route::post('/createCategory',[CategoryController::class,'storeCategory']);
 
+Route::get('/getCategories',[CategoryController::class,'getCategories']);
 
 // SLIDER 
 Route::post('createSlider',[SliderController::class,'store']);

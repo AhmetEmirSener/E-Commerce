@@ -8,4 +8,8 @@ class Category extends Model
 {
     protected $guarded = [];
 
+    public function getChild(){
+        return $this->hasMany(category::class,'parent_id');
+    }
+
 }
