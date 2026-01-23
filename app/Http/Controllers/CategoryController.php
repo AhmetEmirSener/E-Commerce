@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Category;
+use App\Models\Advert;
+
 use Illuminate\Http\Request;
 
 use App\Http\Requests\CategoryStoreRequest;
@@ -45,8 +47,8 @@ class CategoryController extends Controller
 
     public function getCategories(){
         try {
-            $categories =Category::where('parent_id',null)->with('getChild')->get();
-            
+            $categories =Category::where('parent_id',null)->with('getChild')->with('popularAdverts.product')->get();
+            //return response()->json($categories);
             return CategoryResource::collection($categories);
         
         } catch (\Throwable $th) {
