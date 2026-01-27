@@ -33,6 +33,8 @@ Route::delete('/deleteProduct/{id}',[ProductController::class,'deleteProduct']);
 //PRODUCT 
 
 //ADVERT
+Route::get('/advert/{slug}',[AdvertController::class,'getAdvert']);
+
 Route::post('/storeAdvert',[AdvertController::class,'createAdvert']);
 
 Route::put('/updateAdvert/{id}',[AdvertController::class,'updateAdvert']);
@@ -105,7 +107,7 @@ Route::post('createSliderItem',[SliderItemsController::class,'store']);
 
 Route::get('getSliderItem/{name}',[SliderController::class,'getSlider']);
 
-
+Route::get('popularAdverts/{categoryId}/{productId}',[SliderController::class,'popularAdvertsByCategory']);
 
 // CAMPAIGN
 

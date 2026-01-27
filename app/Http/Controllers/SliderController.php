@@ -5,10 +5,15 @@ namespace App\Http\Controllers;
 use App\Models\Slider;
 use App\Models\SliderItems;
 
+use App\Models\Category;
 use Illuminate\Http\Request;
 use App\Http\Requests\StoreSlider;
 use App\Http\Resources\SliderResource;
-
+use App\Http\Resources\CategoryResource;
+use App\Http\Resources\AdvertResource;
+use App\Http\Resources\popularAdvertsByCate;
+use App\Http\Resources\MiniAdvertResource
+;
 
 class SliderController extends Controller
 {
@@ -27,8 +32,13 @@ class SliderController extends Controller
 
 
     
-    public function getSlider($sliderName){
+    public function getSlider(Request $request, $sliderName){
         try {
+            if($sliderName==='advertPage' && $request->category_id){
+                $popularAdverts = Category::where('id',$request->category_id)->with('popularAdverts')->get();
+                return response()->json($popularAdverts);
+            }
+
             $slider = Slider::where('page',$sliderName)->with([
                 'items',
                 'items.advert.product',
@@ -40,9 +50,28 @@ class SliderController extends Controller
                 return response()->json(['message'=>'Slider bulunamadı'],400);
             }
             
+    
+
+            
             return SliderResource::collection($slider);
 
         } catch (\Exception $e) {
+            return response()->json(['message'=>$e->getMessage()],500);
+        }
+    }
+
+    public function popularAdvertsByCategory($categoryId,$productId){
+        try {
+            $category = Category::with('popularAdverts.product')
+            ->findOrFail($categoryId);
+
+            $popularAdverts = $category->popularAdverts()
+            ->where('products.id', '!=', $productId)
+            ->get();
+
+            return MiniAdvertResource::collection($popularAdverts);
+
+        }catch (\Exception $e) {
             return response()->json(['message'=>$e->getMessage()],500);
         }
     }

@@ -24,7 +24,7 @@ class SliderItemResource extends JsonResource
             'mobile_image' => $this->mobile_image,
             'sort' => $this->sort,
             'ref' => match ($this->ref_type) {
-                'product', 'advert' => new AdvertResource($this->advert),
+                'product', 'advert' => new miniAdvertResource($this->advert),
                 'category' => new CategoryResource($this->category),
                 'campaign'=> new CampaignResource($this->campaign),
                 default => null

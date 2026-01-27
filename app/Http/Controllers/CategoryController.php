@@ -47,10 +47,15 @@ class CategoryController extends Controller
 
     public function getCategories(){
         try {
-            $categories =Category::where('parent_id',null)->with('getChild')->with('popularAdverts.product')->get();
+            $categories = Category::whereNull('parent_id')
+            ->with('getChild')
+            ->get();
+            $categories->each(function ($category) {
+                $category->popular_adverts = $category->popularAdvertsWithChildren()->get();
+            });
             //return response()->json($categories);
             return CategoryResource::collection($categories);
-        
+                                
         } catch (\Throwable $th) {
             return response()->json(['error'=>$th->getMessage()],500);
         }

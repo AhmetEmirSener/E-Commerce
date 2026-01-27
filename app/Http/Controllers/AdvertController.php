@@ -7,8 +7,12 @@ use Illuminate\Http\Request;
 use App\Http\Requests\AdvertRequest;
 use App\Http\Requests\UpdateAdvertRequest;
 
+use App\Http\Resources\AdvertResource;
+
 class AdvertController extends Controller
 {
+
+    
     public function createAdvert(AdvertRequest $request){
 
         try {
@@ -29,6 +33,21 @@ class AdvertController extends Controller
 
         }
     }
+
+    public function getAdvert($slug){
+        try {
+            $advert = Advert::where('slug',$slug)->with('product','product.images')->first();
+            if($advert){
+                return new AdvertResource($advert);
+            }
+            return response()->json('Ürün bulunamadı',404);
+        } catch (\Throwable $th) {
+            return response()->json(['error'=>$th->getMessage()],500);
+        }
+    }
+
+
+
 
     public function updateAdvert(UpdateAdvertRequest $request,$id){
         try {

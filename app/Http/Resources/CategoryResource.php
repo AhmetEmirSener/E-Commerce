@@ -24,7 +24,7 @@ class CategoryResource extends JsonResource
             'slug'=>$this->slug,
             'image'=>$this->image ? asset('storage/'.$this->image):null,
             'children'=>  CategoryChildResource::collection($this->getChild),
-            'popular_adverts'=> AdvertResource::collection($this->popularAdverts)
+            'popular_adverts'=> miniAdvertResource::collection($this->popular_adverts ?? collect())
         ];
     }
 }

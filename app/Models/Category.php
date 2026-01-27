@@ -22,7 +22,20 @@ class Category extends Model
             'product_id',    // adverts.product_id
             'id',            // categories.id
             'id'             // products.id
-        )->orderByDesc('views')->limit(6);
+        )->orderByDesc('adverts.views')->limit(10);
+    }
+
+
+
+    public function popularAdvertsWithChildren()
+    {
+        $categoryIds = $this->getChild()->pluck('id')->push($this->id);
+    
+        return Advert::whereHas('product', function ($q) use ($categoryIds) {
+            $q->whereIn('category_id', $categoryIds);
+        })
+        ->orderByDesc('views')
+        ->limit(6);
     }
 
 }
