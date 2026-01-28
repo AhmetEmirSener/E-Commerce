@@ -10,8 +10,13 @@ class Category extends Model
     protected $guarded = [];
 
     public function getChild(){
-        return $this->hasMany(category::class,'parent_id');
+        return $this->hasMany(category::class,'parent_id')->with('getChild');
     }
+
+    public function parent()
+    {
+        return $this->belongsTo(Category::class, 'parent_id');
+    }      
 
     public function popularAdverts()
     {
@@ -29,13 +34,29 @@ class Category extends Model
 
     public function popularAdvertsWithChildren()
     {
-        $categoryIds = $this->getChild()->pluck('id')->push($this->id);
+        $this->loadMissing('getChild.getChild');    
+        $childIds = $this->getAllChildrenIds();
+
+        $categoryIds = collect($childIds)->push($this->id);
     
         return Advert::whereHas('product', function ($q) use ($categoryIds) {
             $q->whereIn('category_id', $categoryIds);
         })
         ->orderByDesc('views')
         ->limit(6);
+    }
+
+
+    public function getAllChildrenIds(&$ids=[]){
+        foreach($this->getChild as $child){
+            $ids[]=$child->id;
+
+            if($child->getChild->isNotEmpty()){
+                $child->getAllChildrenIds($ids);
+            }
+        }
+        return $ids;
+
     }
 
 }

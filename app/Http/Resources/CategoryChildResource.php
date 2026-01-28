@@ -20,6 +20,7 @@ class CategoryChildResource extends JsonResource
             'parent_id'=>$this->parent_id,
             'slug'=>$this->slug,
             'image'=>$this->image ? asset('storage/'. $this->image): null,
+            'children'=>CategoryChildResource::collection($this->getChild ?? collect()) 
         ];
     }
 }

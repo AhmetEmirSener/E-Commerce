@@ -3,30 +3,40 @@
 namespace App\Http\Controllers;
 
 use App\Models\Advert;
+use App\Models\Product;
 use Illuminate\Http\Request;
 use App\Http\Requests\AdvertRequest;
 use App\Http\Requests\UpdateAdvertRequest;
 
 use App\Http\Resources\AdvertResource;
+use App\Services\SlugCreateService;
 
 class AdvertController extends Controller
 {
-
     
+    protected SlugCreateService $slugCreateService;
+
+    public function __construct(SlugCreateService $slugCreateService){
+        $this->slugCreateService=$slugCreateService;
+    }
+
     public function createAdvert(AdvertRequest $request){
 
         try {
             $data = $request->validated();
-            $product_id=$data['product_id'];
-           
-            if(Advert::where('product_id',$product_id)->exists()){
+            $product= Product::findOrFail($data['product_id']);
+            $data['category_id']=$product->category_id;
+            $data['slug']=$this->slugCreateService->createSlug($data,\App\Models\Advert::class);
+
+
+            if(Advert::where('product_id',$product->id)->exists()){
                 return response()->json(['message'=>'Ürün için ilan oluşturulmuş'],400);
 
             }
 
             $advert=Advert::create($data);
 
-            return response()->json(['message'=>'İlan oluşturuldu','advert'=>$advert],200);
+            return response()->json(['message'=>'İlan oluşturuldu','advert'=>$advert],201);
 
         } catch (\Exception $e) {
              return response()->json(['error'=>$e->getMessage()],500);

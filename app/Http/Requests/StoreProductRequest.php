@@ -35,6 +35,7 @@ class StoreProductRequest extends FormRequest
             'weight'=>'nullable|numeric',
             'image' => 'nullable|array',
             'image.*' => 'image|mimes:jpg,jpeg,png,webp',
+            'features'=>'nullable|json'
             
         ];
     }

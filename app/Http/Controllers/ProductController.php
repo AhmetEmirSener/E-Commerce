@@ -32,9 +32,12 @@ class ProductController extends Controller
     public function createProduct(StoreProductRequest $request){
         try{
             $data = $request->validated();
-
+            
             $data['slug']=$this->slugCreateService->createSlug($data,\App\Models\Product::class);
             unset($data['image']);
+            if(isset($data['features'])){
+                $data['features'] = json_decode($data['features'], true);
+            }
             $product = Product::create($data);
             
             if($request->hasFile('image')){

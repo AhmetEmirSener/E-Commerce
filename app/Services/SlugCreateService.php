@@ -8,7 +8,7 @@ class SlugCreateService
 {
    public function createSlug($data=[],string $modelClass,$ignoreId=null){
 
-    $baseSlug = Str::slug($data['name']);
+    $baseSlug = Str::slug($data['name'] ?? $data['title']);
     $slug = $baseSlug;
 
     $query= $modelClass::where('slug','LIKE',"{$slug}%");

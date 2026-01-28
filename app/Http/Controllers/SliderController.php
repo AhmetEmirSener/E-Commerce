@@ -6,6 +6,9 @@ use App\Models\Slider;
 use App\Models\SliderItems;
 
 use App\Models\Category;
+use App\Models\Product;
+use App\Models\Advert;
+
 use Illuminate\Http\Request;
 use App\Http\Requests\StoreSlider;
 use App\Http\Resources\SliderResource;
@@ -62,19 +65,104 @@ class SliderController extends Controller
 
     public function popularAdvertsByCategory($categoryId,$productId){
         try {
-            $category = Category::with('popularAdverts.product')
-            ->findOrFail($categoryId);
+            $category = Category::findOrFail($categoryId);
+            
+            $path = [];
+            $current= $category;
+            while($current){
+                $path[]=$current;
+                $current = $current->parent;
+            }
+            $path=array_reverse($path);
+            $productTypeCategory = $path[1] ?? $category;
 
-            $popularAdverts = $category->popularAdverts()
+//            dd($productTypeCategory);
+            $cate = Category::with('getChild')->findOrFail($productTypeCategory->id);
+
+            $cate->popular_adverts = $cate->popularAdvertsWithChildren()
+            ->where('adverts.id','!=',$productId)->get();
+            return MiniAdvertResource::collection($cate->popular_adverts);
+
+            //return response()->json($cate);
+            /*
+            $popularAdverts = $cate->popularAdverts()
             ->where('products.id', '!=', $productId)
             ->get();
-
-            return MiniAdvertResource::collection($popularAdverts);
+             */
 
         }catch (\Exception $e) {
             return response()->json(['message'=>$e->getMessage()],500);
         }
     }
+
+
+    public function recoAdvertsByFeatures($productId){
+        try {
+            $product = Product::findOrFail($productId);
+            $advert = Advert::where('product_id',$product->id)->first();
+            $features = collect($product->features)->pluck('key')->toArray();
+            if(!$features){
+                return response()->json([]);
+            }
+            $adverts  = Advert::where('id','!=',$advert->id)->whereHas('product', function($q) use($advert,$features){
+
+                $q->where(function($qq) use ($features){
+                    foreach($features as $f){
+                        $qq->orWhereJsonContains('features',['key'=>$f]);
+                    }
+                });
+            })   
+            ->with('product')
+            ->orderByDesc('views')
+            ->limit(10)
+            ->get();
+
+            return MiniAdvertResource::collection($adverts);
+
+        } catch (\Throwable $th) {
+            return response()->json(['message'=>$th->getMessage()],500);
+
+        }
+    }
+
+    /*
+    public function recoAdvertsByFeatures($productId){
+    try {
+        $product = Product::findOrFail($productId);
+        $advert = Advert::where('product_id',$product->id)->firstOrFail();
+        $features = collect($product->features)->pluck('key')->toArray();
+
+        if(empty($features)){
+            return response()->json([]);
+        }
+
+        $featureScoreSql = [];
+        foreach ($features as $f) {
+            $featureScoreSql[] = "JSON_CONTAINS(products.features, JSON_OBJECT('key', '$f'))";
+        }
+
+        $scoreSql = implode(' + ', $featureScoreSql);
+
+        $adverts = Advert::selectRaw("
+                adverts.*,
+                ($scoreSql) as match_score,
+                ((products.category_id = ?) * 2) as category_score,
+                ((($scoreSql) * 5) + ((products.category_id = ?) * 2) + (adverts.views / 50)) as total_score
+            ", [$advert->product->category_id, $advert->product->category_id])
+            ->join('products', 'products.id', '=', 'adverts.product_id')
+            ->where('adverts.id','!=',$advert->id)
+            ->having('match_score','>',0)
+            ->orderByDesc('total_score')
+            ->limit(10)
+            ->get();
+
+        return MiniAdvertResource::collection($adverts);
+
+    } catch (\Throwable $th) {
+        return response()->json(['message'=>$th->getMessage()],500);
+    }
+}
+    */
 
 
 }

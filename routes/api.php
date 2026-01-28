@@ -109,6 +109,8 @@ Route::get('getSliderItem/{name}',[SliderController::class,'getSlider']);
 
 Route::get('popularAdverts/{categoryId}/{productId}',[SliderController::class,'popularAdvertsByCategory']);
 
+Route::get('recoAdverts/{productId}',[SliderController::class,'recoAdvertsByFeatures']);
+
 // CAMPAIGN
 
 Route::post('createCampaign',[CampaignController::class,'createCampaign']);
