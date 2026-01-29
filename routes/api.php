@@ -17,6 +17,7 @@ use App\Http\Controllers\SliderItemsController;
 use App\Http\Controllers\SliderController;
 use App\Http\Controllers\CampaignController;
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\ReviewController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -91,6 +92,13 @@ Route::put('/updateBrand/{id}',[BrandController::class,'updateBrand']);
 
 Route::get('/getBrands',[BrandController::class,'getBrands']);
 
+
+
+// REVIEW 
+
+Route::post('/storeReview',[ReviewController::class,'storeReview']);
+
+Route::get('/getAdvertsReview/{AdvertId}',[ReviewController::class,'getAdvertsReview']);
 
 
 // CATEGORY 
