@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Advert;
 use App\Models\Product;
+use App\Models\Category;
+
 use Illuminate\Http\Request;
 use App\Http\Requests\AdvertRequest;
 use App\Http\Requests\UpdateAdvertRequest;
@@ -11,13 +13,17 @@ use App\Http\Requests\UpdateAdvertRequest;
 use App\Http\Resources\AdvertResource;
 use App\Services\SlugCreateService;
 
+use App\Services\CategoryService;
+
 class AdvertController extends Controller
 {
     
     protected SlugCreateService $slugCreateService;
+    protected CategoryService $categoryService;
 
-    public function __construct(SlugCreateService $slugCreateService){
+    public function __construct(SlugCreateService $slugCreateService, CategoryService $categoryService){
         $this->slugCreateService=$slugCreateService;
+        $this->categoryService=$categoryService;
     }
 
     public function createAdvert(AdvertRequest $request){
@@ -47,8 +53,15 @@ class AdvertController extends Controller
     public function getAdvert($slug){
         try {
             $advert = Advert::where('slug',$slug)->with('product','product.images')->first();
+
+            $category = Category::findOrFail($advert->category_id);
+            $path = $this->categoryService->breadcrumb($category);
+
             if($advert){
-                return new AdvertResource($advert);
+                return response()->json([
+                    'data'=>new AdvertResource($advert),
+                    'bread_crumb'=>$path
+                ]);
             }
             return response()->json('Ürün bulunamadı',404);
         } catch (\Throwable $th) {

@@ -16,8 +16,8 @@ class UserResource extends JsonResource
     public function toArray(Request $request): array
     {
         return[
-            'name'=>Str::mask($this->name, '*', 1),
-            'surname'=>Str::mask($this->surname, '*', 1)
+            'name'=>Str::mask(Str::limit($this->name,4,''), '*', 1),
+            'surname'=>Str::mask(Str::limit($this->surname,4,''), '*', 1)
         ];
     }
 }

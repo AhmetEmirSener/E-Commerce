@@ -19,7 +19,8 @@ class ReviewResource extends JsonResource
             'rating'=>$this->rating,
             'comment'=>$this->comment ?? null,
             'status'=>$this->status,
-'comment_date' => $this->created_at->diffForHumans(),
+            'comment_date' => $this->created_at->diffForHumans(),
+            'product_image'=>$this->product->image ?? null,
             'user'=> new UserResource($this->user)
         ];
     }

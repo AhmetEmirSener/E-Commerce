@@ -100,6 +100,8 @@ Route::post('/storeReview',[ReviewController::class,'storeReview']);
 
 Route::get('/getAdvertsReview/{AdvertId}',[ReviewController::class,'getAdvertsReview']);
 
+Route::get('/getReviewBySlug/{slug}',[ReviewController::class,'getReviewBySlug']);
+
 
 // CATEGORY 
 
@@ -115,7 +117,7 @@ Route::post('createSliderItem',[SliderItemsController::class,'store']);
 
 Route::get('getSliderItem/{name}',[SliderController::class,'getSlider']);
 
-Route::get('popularAdverts/{categoryId}/{productId}',[SliderController::class,'popularAdvertsByCategory']);
+Route::get('popularAdverts/{advertId}/',[SliderController::class,'popularAdvertsByCategory']);
 
 Route::get('recoAdverts/{productId}',[SliderController::class,'recoAdvertsByFeatures']);
 

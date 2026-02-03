@@ -15,11 +15,20 @@ use App\Http\Resources\SliderResource;
 use App\Http\Resources\CategoryResource;
 use App\Http\Resources\AdvertResource;
 use App\Http\Resources\popularAdvertsByCate;
-use App\Http\Resources\MiniAdvertResource
-;
+use App\Http\Resources\MiniAdvertResource;
+
+use App\Services\CategoryService;
+
 
 class SliderController extends Controller
 {
+
+    protected CategoryService $categoryService;
+    
+    public function __construct(CategoryService $categoryService){
+        $this->categoryService=$categoryService;
+    }
+
 
     public function store(StoreSlider $request){
         try {
@@ -63,32 +72,19 @@ class SliderController extends Controller
         }
     }
 
-    public function popularAdvertsByCategory($categoryId,$productId){
+    public function popularAdvertsByCategory($advertId){
         try {
-            $category = Category::findOrFail($categoryId);
+            $advert = Advert::witH('category')->findOrFail($advertId);
+
             
-            $path = [];
-            $current= $category;
-            while($current){
-                $path[]=$current;
-                $current = $current->parent;
-            }
-            $path=array_reverse($path);
-            $productTypeCategory = $path[1] ?? $category;
+            $path = $this->categoryService->breadcrumb($advert->category);
+            $productTypeCategory = $path[1] ?? $advert->category;
 
-//            dd($productTypeCategory);
-            $cate = Category::with('getChild')->findOrFail($productTypeCategory->id);
-
+            $cate = Category::with('getChild')->findOrFail($productTypeCategory['id']);
             $cate->popular_adverts = $cate->popularAdvertsWithChildren()
-            ->where('adverts.id','!=',$productId)->get();
-            return MiniAdvertResource::collection($cate->popular_adverts);
+            ->where('adverts.id','!=',$advertId)->get();
 
-            //return response()->json($cate);
-            /*
-            $popularAdverts = $cate->popularAdverts()
-            ->where('products.id', '!=', $productId)
-            ->get();
-             */
+            return MiniAdvertResource::collection($cate->popular_adverts);
 
         }catch (\Exception $e) {
             return response()->json(['message'=>$e->getMessage()],500);

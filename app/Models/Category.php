@@ -10,7 +10,7 @@ class Category extends Model
     protected $guarded = [];
 
     public function getChild(){
-        return $this->hasMany(category::class,'parent_id')->with('getChild');
+        return $this->hasMany(category::class,'parent_id');
     }
 
     public function parent()
@@ -42,10 +42,10 @@ class Category extends Model
         return Advert::whereHas('product', function ($q) use ($categoryIds) {
             $q->whereIn('category_id', $categoryIds);
         })
-        ->orderByDesc('views')
-        ->limit(6);
+        ->selectRaw('adverts.*,(avg_rating*20 + views) as score' )
+        ->orderByDesc('score')
+        ->limit(10);
     }
-
 
     public function getAllChildrenIds(&$ids=[]){
         foreach($this->getChild as $child){
