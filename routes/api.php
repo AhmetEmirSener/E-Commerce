@@ -98,11 +98,12 @@ Route::get('/getBrands',[BrandController::class,'getBrands']);
 
 Route::post('/storeReview',[ReviewController::class,'storeReview']);
 
-Route::get('/getAdvertsReview/{AdvertId}',[ReviewController::class,'getAdvertsReview']);
+//Route::get('/getAdvertsReview/{AdvertId}',[ReviewController::class,'getAdvertsReview']);
 
 Route::get('/getReviewBySlug/{slug}',[ReviewController::class,'getReviewBySlug']);
 
-
+Route::get('/reviewPage/{slug}',[ReviewController::class,'reviewPage']);
+Route::get('/filteredReview',[ReviewController::class,'filterReview']);
 // CATEGORY 
 
 Route::post('/createCategory',[CategoryController::class,'storeCategory']);
