@@ -19,6 +19,16 @@ class SliderResource extends JsonResource
              'type'=>$this->type, 
              'title'=>$this->title,
              'sort'=>$this->sort,
-            'items'=>SliderItemResource::collection($this->items), ];
+             'ref_type' => $this->items->first()?->ref_type,
+                'items' => $this->items->map(function($item) {
+                return match ($item->ref_type) {
+                    'product', 'advert' => new miniAdvertResource($item->advert),
+                    'category' => new CategoryResource($item->category),
+                    'campaign'=> new CampaignResource($item->campaign),
+                    default => null
+                };
+
+                }),
+            ];
     }
 }

@@ -115,12 +115,13 @@ Route::post('createSlider',[SliderController::class,'store']);
 
 Route::post('createSliderItem',[SliderItemsController::class,'store']);
 
+Route::get('getLayout/{sliderName}',[SliderController::class,'getLayout']);
 
-Route::get('getSliderItem/{name}',[SliderController::class,'getSlider']);
+Route::get('getSliderItem/{id}',[SliderController::class,'getSlider']);
 
-Route::get('popularAdverts/{advertId}/',[SliderController::class,'popularAdvertsByCategory']);
+Route::get('popularAdverts/{slug}/',[SliderController::class,'popularAdvertsByCategory']);
 
-Route::get('recoAdverts/{productId}',[SliderController::class,'recoAdvertsByFeatures']);
+Route::get('recoAdverts/{slug}',[SliderController::class,'recoAdvertsByFeatures']);
 
 // CAMPAIGN
 

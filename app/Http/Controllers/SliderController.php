@@ -43,9 +43,33 @@ class SliderController extends Controller
     }
 
 
-    
-    public function getSlider(Request $request, $sliderName){
+    public function getLayout($sliderName){
         try {
+            $layout = Slider::where('page',$sliderName)->orderBy('sort')->get(['id','type', 'sort']);
+
+
+            return response()->json($layout);
+
+        } catch (\Throwable $th) {
+            return response()->json(['message'=>$th->getMessage()],500);
+        }
+    }
+
+    
+    public function getSlider($sliderId){
+        try {
+            $slider = Slider::with([
+                'items',
+                'items.advert.product',
+                'items.category',
+                'items.campaign'
+            ])->findOrFail($sliderId);
+            
+            return new SliderResource($slider);
+            /* 
+            return response()->json($slider);
+
+
             if($sliderName==='advertPage' && $request->category_id){
                 $popularAdverts = Category::where('id',$request->category_id)->with('popularAdverts')->get();
                 return response()->json($popularAdverts);
@@ -62,19 +86,19 @@ class SliderController extends Controller
                 return response()->json(['message'=>'Slider bulunamadı'],400);
             }
             
-    
 
             
-            return SliderResource::collection($slider);
+            return SliderResource::collection($slider);  
+            */
 
         } catch (\Exception $e) {
             return response()->json(['message'=>$e->getMessage()],500);
         }
     }
 
-    public function popularAdvertsByCategory($advertId){
+    public function popularAdvertsByCategory($slug){
         try {
-            $advert = Advert::witH('category')->findOrFail($advertId);
+            $advert = Advert::with('category')->where('slug',$slug)->first();
 
             
             $path = $this->categoryService->breadcrumb($advert->category);
@@ -82,7 +106,7 @@ class SliderController extends Controller
 
             $cate = Category::with('getChild')->findOrFail($productTypeCategory['id']);
             $cate->popular_adverts = $cate->popularAdvertsWithChildren()
-            ->where('adverts.id','!=',$advertId)->get();
+            ->where('adverts.id','!=',$advert->id)->get();
 
             return MiniAdvertResource::collection($cate->popular_adverts);
 
@@ -92,10 +116,10 @@ class SliderController extends Controller
     }
 
 
-    public function recoAdvertsByFeatures($productId){
+    public function recoAdvertsByFeatures($slug){
         try {
-            $product = Product::findOrFail($productId);
-            $advert = Advert::where('product_id',$product->id)->first();
+            $advert = Advert::where('slug',$slug)->first();
+            $product = Product::findOrFail($advert->product_id);
             $features = collect($product->features)->pluck('key')->toArray();
             if(!$features){
                 return response()->json([]);

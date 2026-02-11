@@ -59,8 +59,11 @@ class AdvertController extends Controller
 
             if($advert){
                 return response()->json([
-                    'data'=>new AdvertResource($advert),
-                    'bread_crumb'=>$path
+                    'data'=>[
+                        'advert'=>new AdvertResource($advert),
+                        'bread_crumb'=>$path
+                    ]
+                    
                 ]);
             }
             return response()->json('Ürün bulunamadı',404);
