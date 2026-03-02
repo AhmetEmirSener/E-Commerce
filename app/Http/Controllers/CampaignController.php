@@ -23,8 +23,8 @@ class CampaignController extends Controller
         Campaign::create($data);
         return response()->json('Kampanya oluşturuldu.',200);
 
-
-
     }
+
+
 
 }

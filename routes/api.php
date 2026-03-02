@@ -18,6 +18,9 @@ use App\Http\Controllers\SliderController;
 use App\Http\Controllers\CampaignController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\CampaignRulesController;
+
+
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -104,11 +107,31 @@ Route::get('/getReviewBySlug/{slug}',[ReviewController::class,'getReviewBySlug']
 
 Route::get('/reviewPage/{slug}',[ReviewController::class,'reviewPage']);
 Route::get('/filteredReview',[ReviewController::class,'filterReview']);
+
+
+
+
+
+
+
 // CATEGORY 
 
 Route::post('/createCategory',[CategoryController::class,'storeCategory']);
 
 Route::get('/getCategories',[CategoryController::class,'getCategories']);
+
+Route::get('/searchByCategory',[CategoryController::class,'searchByCategory']);
+
+Route::get('/getCategoryTree/{slug}',[CategoryController::class,'getCategoryTree']);
+
+
+
+
+
+
+
+
+
 
 // SLIDER 
 Route::post('createSlider',[SliderController::class,'store']);
@@ -127,3 +150,8 @@ Route::get('recoAdverts/{slug}',[SliderController::class,'recoAdvertsByFeatures'
 
 Route::post('createCampaign',[CampaignController::class,'createCampaign']);
 
+Route::post('createRules',[CampaignRulesController::class,'createRules']);
+
+Route::get('getCampaignAdverts/{slug}',[CampaignRulesController::class,'getCampaignAdverts']);
+
+Route::get('getCampaignPage/{slug}',[CampaignRulesController::class,'getCampaignPage']);

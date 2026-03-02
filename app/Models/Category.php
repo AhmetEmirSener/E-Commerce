@@ -13,6 +13,11 @@ class Category extends Model
         return $this->hasMany(category::class,'parent_id');
     }
 
+    public function childrenRecursive()
+    {   
+        return $this->getChild()->with('childrenRecursive');
+    }
+
     public function parent()
     {
         return $this->belongsTo(Category::class, 'parent_id');

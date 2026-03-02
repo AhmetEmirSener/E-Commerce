@@ -12,7 +12,6 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('adverts', function (Blueprint $table) {
-            $table->integer('rating_sum')->default(0)->after('avg_rating');
         });
     }
 

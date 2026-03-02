@@ -14,12 +14,18 @@ class Product extends Model
         'features' => 'array',
     ];
     
-
+    public function advert(){
+        return $this->belongsTo(Advert::class);
+    }
     public function category(){
         return $this->belongsTo(Category::class);
     }
 
     public function images(){
         return $this->hasMany(ProductImage::class);
+    }
+
+    public function activeDiscount(){
+        return $this->hasOne(ProductDiscount::class);
     }
 }
