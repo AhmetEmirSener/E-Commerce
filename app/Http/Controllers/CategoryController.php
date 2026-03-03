@@ -102,7 +102,7 @@ class CategoryController extends Controller
 
 
             $adverts = Advert::query()
-            ->with('product')
+            ->with('product.activeDiscount')
             ->whereHas('product',function ($q) use ($categoryIds){
                 $q->whereIn('category_id',$categoryIds);
             })

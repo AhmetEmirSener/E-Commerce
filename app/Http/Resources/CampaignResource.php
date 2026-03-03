@@ -4,6 +4,8 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use App\Http\Resources\MiniAdvertResource;
+
 
 class CampaignResource extends JsonResource
 {
@@ -23,7 +25,7 @@ class CampaignResource extends JsonResource
             'mobile_image'=>$this->mobile_image ? asset('storage/'. $this->mobile_image): null,
             'link'=>$this->link,
             'start_date'=>$this->start_date,
-            'end_date'=>$this->end_date
+            'end_date'=>$this->end_date,
         ];
     }
 }

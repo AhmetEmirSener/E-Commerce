@@ -60,7 +60,7 @@ class SliderController extends Controller
         try {
             $slider = Slider::with([
                 'items',
-                'items.advert.product',
+                'items.advert.product.activeDiscount',
                 'items.category',
                 'items.campaign'
             ])->findOrFail($sliderId);
@@ -132,7 +132,7 @@ class SliderController extends Controller
                     }
                 });
             })   
-            ->with('product')
+            ->with('product.activeDiscount')
             ->orderByDesc('views')
             ->limit(10)
             ->get();

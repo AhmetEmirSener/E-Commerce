@@ -15,7 +15,7 @@ class Product extends Model
     ];
     
     public function advert(){
-        return $this->belongsTo(Advert::class);
+        return $this->hasOne(Advert::class);
     }
     public function category(){
         return $this->belongsTo(Category::class);

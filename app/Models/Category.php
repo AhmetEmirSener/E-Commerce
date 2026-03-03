@@ -48,6 +48,7 @@ class Category extends Model
             $q->whereIn('category_id', $categoryIds);
         })
         ->selectRaw('adverts.*,(avg_rating*20 + views) as score' )
+        ->with('product.activeDiscount')
         ->orderByDesc('score')
         ->limit(10);
     }

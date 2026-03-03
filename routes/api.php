@@ -152,6 +152,14 @@ Route::post('createCampaign',[CampaignController::class,'createCampaign']);
 
 Route::post('createRules',[CampaignRulesController::class,'createRules']);
 
-Route::get('getCampaignAdverts/{slug}',[CampaignRulesController::class,'getCampaignAdverts']);
+Route::get('createCampaignProducts/{slug}',[CampaignRulesController::class,'createCampaignProducts']);
+
+Route::get('attachProduct/{slug}/{advertId}',[CampaignRulesController::class,'attachProduct']);
+
+Route::get('detachProduct/{slug}/{advertId}',[CampaignRulesController::class,'detachProduct']);
+
+
+
+Route::post('createCampaignExclusives',[CampaignRulesController::class,'createCampaignExclusives']);
 
 Route::get('getCampaignPage/{slug}',[CampaignRulesController::class,'getCampaignPage']);

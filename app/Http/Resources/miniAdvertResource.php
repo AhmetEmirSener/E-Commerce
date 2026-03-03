@@ -15,14 +15,22 @@ class miniAdvertResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $product = $this->product;
+        $advert = $product?->advert;
+        $discount = $product?->activeDiscount;
         return[
-            'id'=>$this->id,
-            'category_id'=>$this->category_id,
-            'title'=>$this->title,
-            'slug'=>$this->slug,
-            'avg_rating'=>$this->avg_rating,
-            'total_comments'=>$this->total_comments,
-            'item_ref'=>  new miniProductResource($this->product),
+            'id'=>$advert->id,
+            'category_id'=>$advert->category_id,
+            'title'=>$advert->title,
+            'slug'=>$advert->slug,
+            'avg_rating'=>$advert->avg_rating,
+            'total_comments'=>$advert->total_comments,
+
+            'image'=>$product->image ? asset('storage/'.$product->image):null,
+            'original_price'=>$product->price,
+            'discount_price' => $this->discount_price, 
+
         ];
     }
 }
+
