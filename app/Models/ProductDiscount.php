@@ -12,4 +12,9 @@ class ProductDiscount extends Model
         return $this->belongsTo(Product::class);
     }
 
+    public function campaign(){
+        return $this->belongsTo(Campaign::class);
+    }
+
 }
+

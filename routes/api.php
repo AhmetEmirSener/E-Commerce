@@ -162,4 +162,6 @@ Route::get('detachProduct/{slug}/{advertId}',[CampaignRulesController::class,'de
 
 Route::post('createCampaignExclusives',[CampaignRulesController::class,'createCampaignExclusives']);
 
-Route::get('getCampaignPage/{slug}',[CampaignRulesController::class,'getCampaignPage']);
+Route::get('getCampaignDetails/{slug}',[CampaignRulesController::class,'getCampaignDetails']);
+
+Route::get('getCampaignAdverts/{slug}',[CampaignRulesController::class,'getCampaignAdverts']);

@@ -41,26 +41,39 @@ class CreateCampaignProductsJob implements ShouldQueue
                 
                 if($product->is_campaign_on){
                     $currentCampaign=Campaign::find($product->campaign_id);
-                    if($currentCampaign->exclusive) continue;
+                    if (!$currentCampaign) {
+                        $product->campaign_id    = null;
+                        $product->is_campaign_on = false;
+                    }else{
 
-                    if($this->campaign->priority > $currentCampaign->priority){
-                        ProductDiscount::where('product_id',$product->id)
-                        ->where('campaign_id',$currentCampaign->id)
-                        ->update(['is_active'=>false]);
-                    }else continue;
+                
+                        if($currentCampaign->exclusive) continue;
+
+                        if($this->campaign->priority > $currentCampaign->priority){
+                            ProductDiscount::where('product_id',$product->id)
+                            ->where('is_active', true)
+                            ->where('campaign_id',$currentCampaign->id)
+                            ->update(['is_active'=>false]);
+                        }else continue;
+                    }
                        
                 }
                 $discountPrice = $discountService->calculateDiscount(
                     $product->price, 
                     $this->campaign  
                 );
-                ProductDiscount::create([
-                    'product_id'=>$product->id,
-                    'campaign_id'=>$this->campaign->id,
-                    'discount_price'=>$discountPrice,
-                    'is_active' => true,
-                ]);
-
+                ProductDiscount::updateOrCreate(
+                    [
+                        'product_id' => $product->id,
+                        'campaign_id' => $this->campaign->id,
+                    ],
+                    [
+                        'discount_price' => $discountPrice,
+                        'discount_type'=>$this->campaign->discount_type,
+                        'discount_value'=>$this->campaign->discount_value,
+                        'is_active' => true,
+                    ]
+                );
                 $product->campaign_id = $this->campaign->id;
                 $product->is_campaign_on = true;
                 $product->save();

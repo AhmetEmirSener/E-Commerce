@@ -64,21 +64,26 @@ class CampaignRulesController extends Controller
             $campaign = Campaign::with('rules')->where('slug',$slug)->firstOrFail();
 
             $query=Advert::query();
-            
-            foreach($campaign->rules as $rule){
+            $sameFieldRules = $campaign->rules->groupBy('field');
 
-                if($rule->field==='price'){
-                    $query->whereHas('product', function ($q) use ($rule) {
-                        $q->where('price', $rule->operator, $rule->value);
-                    });
+            foreach($sameFieldRules as $field=>$rules){
 
+                if($field==='price'){
+                    foreach($rules as $rule){
+                        $query->whereHas('product',function ($q) use ($rule){
+                            $q->where('price',$rule->operator,$rule->value);
+                        });
+                    }
                 } else {
-                    $query->where($rule->field, $rule->value);
+                    $query->where(function ($q) use ($rules,$field){
+                        foreach($rules as $rule){
+                            $q->orWhere($field,$rule->value);
+                        }
+                    });
                 }
 
             }
             $adverts = $query->with('product')->get();
-
             CreateCampaignProductsJob::dispatch($campaign,$adverts);
 
             return response()->json(['message' => 'Kampanya ürünleri oluşturuluyor.']);
@@ -135,6 +140,8 @@ class CampaignRulesController extends Controller
                         $exists->update([
                             'is_active'      => true,
                             'discount_price' => $newDiscountPrice, 
+                            'discount_type'=>$campaign->discount_type,
+                            'discount_value'=>$campaign->discount_value
                         ]);
                         $product->update(['campaign_id'=>$campaign->id,'is_campaign_on'=>true]);
                         
@@ -156,6 +163,8 @@ class CampaignRulesController extends Controller
                     'product_id'   => $product->id,
                     'campaign_id'  => $campaign->id,
                     'discount_price' => $discountPrice,
+                    'discount_type'=>$campaign->discount_type,
+                    'discount_value'=>$campaign->discount_value,
                     'is_active'    => true,
                 ]);
 
@@ -200,14 +209,36 @@ class CampaignRulesController extends Controller
 
     
 
-    public function getCampaignPage($slug){
+    public function getCampaignDetails($slug){
         try {
             $campaign=Campaign::where('slug',$slug)->firstOrFail();
 
+            return new CampaignResource($campaign);
+        
+        } catch (\Throwable $th) {
+            return response()->json(['message'=>$th->getMessage()],500);
+
+        }
+    }
+
+    public function getCampaignAdverts(Request $request,$slug){
+        try {
+            $campaign=Campaign::where('slug',$slug)->firstOrFail();
+
+            $allowedAdvert = ['avg_rating'];
+            $allowedProduct = ['price'];
+
             $adverts = $campaign->activeProductDiscounts()
-            ->paginate(12);
+            ->when(in_array($request->sort_by, $allowedAdvert), function ($q) use ($request){
+                $q->join('adverts','adverts.product_id','=','product_discounts.product_id')
+                ->orderBy('adverts.'.$request->sort_by, $request->order ?? 'desc');
+            })
+            ->when(in_array($request->sort_by, $allowedProduct), function($q) use ($request) {
+                $q->orderBy('discount_price', $request->order ?? 'desc');
+            })
+            ->paginate(10);
+
             return response()->json([
-                'campaign'=>new CampaignResource($campaign),
                 'data'=>miniAdvertResource::collection($adverts),
                 'meta' => [
                     'current_page' => $adverts->currentPage(),

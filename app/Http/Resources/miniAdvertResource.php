@@ -15,9 +15,23 @@ class miniAdvertResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        $product = $this->product;
-        $advert = $product?->advert;
-        $discount = $product?->activeDiscount;
+        if ($this->resource instanceof \App\Models\ProductDiscount) {
+            $product = $this->product;
+            $advert  = $product?->advert;
+            $discountPrice = $this->discount_price;
+            $discountType = $this->discount_type;
+            $discountValue = $this->discount_value;
+
+            
+        } else {
+            // Advert geliyor
+            $product = $this->product;
+            $advert  = $this->resource;
+            $discountPrice = $product?->activeDiscount?->discount_price ?? null;
+            $discountType = $product?->activeDiscount?->discount_type ?? null;
+            $discountValue = $product?->activeDiscount?->discount_value ?? null;
+
+        }
         return[
             'id'=>$advert->id,
             'category_id'=>$advert->category_id,
@@ -27,8 +41,10 @@ class miniAdvertResource extends JsonResource
             'total_comments'=>$advert->total_comments,
 
             'image'=>$product->image ? asset('storage/'.$product->image):null,
-            'original_price'=>$product->price,
-            'discount_price' => $this->discount_price, 
+            'original_price'=> $product?->price,
+            'discount_price'=> $discountPrice,
+            'discount_type'=>$discountType,
+            'discount_value'=>$discountValue
 
         ];
     }

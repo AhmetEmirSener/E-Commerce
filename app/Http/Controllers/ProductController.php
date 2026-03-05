@@ -7,6 +7,7 @@ use App\Models\ProductImage;
 
 use Illuminate\Http\Request;
 use App\Http\Requests\StoreProductRequest;
+use App\Http\Requests\UpdateProductRequest;
 
 use Illuminate\Support\Str;
 
@@ -55,20 +56,14 @@ class ProductController extends Controller
 
 
 
-    public function updateProduct(StoreProductRequest $request,$id){
+    public function updateProduct(UpdateProductRequest $request,$id){
         try {
             $data = $request->validated();
 
 
             $product = Product::findOrFail($id);
-                if($product->name!==$data['name']){
-                    $slug= Str::slug($data['name']);
-                    $slugCount= Product::where('slug','LIKE',"{$slug}%")->count();
-                    if($slugCount>0){
-                        $slug.='-'.($slugCount+1);
-                    }
-                    $data['slug'] = $slug;
-                }
+            // slug service 
+           
             $product->update($data);
 
             return response()->json(['message' => 'Ürün güncelleme başarılı'], 200);
