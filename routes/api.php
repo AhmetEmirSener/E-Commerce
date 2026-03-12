@@ -27,7 +27,7 @@ Route::get('/user', function (Request $request) {
 })->middleware('auth:sanctum');
 
 //PRODUCT 
-Route::get('/getProducts',[ProductController::class,'getProducts']);
+Route::get('/getProducts',[ProductController::class,'getProducts'])->middleware(AuthMiddleware::class);
 
 Route::post('/storeProduct',[ProductController::class,'createProduct']);
 
@@ -57,6 +57,14 @@ Route::post('/login',[UserController::class,'login']);
 
 Route::post('/logout',[UserController::class,'logout']);
 //USER
+
+// USER RESET PASSWORD
+
+Route::post('/resetPasswordOtp',[UserController::class,'resetPasswordOtp']);
+Route::post('/verifyPasswordOtp',[UserController::class,'verifyPasswordOtp']);
+
+Route::post('/resetPassword',[UserController::class,'resetPassword']);
+
 
 //USER ADDRESS
 Route::post('/createAddress',[UserAddressController::class,'createAddress'])->middleware('auth:sanctum');

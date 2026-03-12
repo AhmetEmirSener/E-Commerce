@@ -6,38 +6,46 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use App\Models\User;
+use App\Http\Requests\RegisterSendOtpRequest;
 
 use Illuminate\Http\Request;
 
 class UserOtpController extends Controller
 {
 
-    public function sendOtp(Request $request){
-        $phone = $request->phone_number;
-        $isRegisted= User::where('phone_number',$phone)->count();
+    public function sendOtp(RegisterSendOtpRequest $request){
+        $data = $request->validated();
+        if(!$data['email']){
+            return response()->json(['message'=>'Email bulunamadı.'],404);
+        }
+
+        $email = $data['email'];
+
+    
+        $isRegisted= User::where('email',$email)->count();
         if($isRegisted){
-            return response()->json(['message'=>'Telefon numarası kullanılıyor'],400);
+            return response()->json(['message'=>'Email zaten kayıtlı.'],400);
         }
         
-        $rateKey = 'otp_rate'.$phone;
+        $rateKey = 'otp_rate'.$email;
         if(Cache::has($rateKey)){
-            return response()->json(['error'=>'Çok sık istek. 1 dakika bekleyin.'], 429);
+            return response()->json(['message'=>'Çok sık istek. 1 dakika bekleyin.'], 429);
         }
         Cache::put($rateKey,true,now()->addMinute());
 
         $code = random_int(100000,999999);
         $token = (string) Str::uuid();
 
-        $cacheKey = 'phone_verif'.$token;
+        $cacheKey = 'email_verif'.$token;
         Cache::put($cacheKey,[
-            'phone'=>$phone,
+            'email'=>$email,
             'code_hash'=>Hash::make((string)$code),
             'attempts'=>0
         ], now()->addMinutes(5));
 
-        Log::info("OTP for {$phone} is {$code}");
+        Log::info("OTP for {$email} is {$code}");
 
-        return response()->json(['message'=>'Doğrulama kodu gönderildi.','verification_code'=>$token],200);
+        return response()->json(['message'=>'Doğrulama kodu gönderildi.','token'=>$token],200);
     }
 
 
@@ -45,31 +53,31 @@ class UserOtpController extends Controller
         $code = $request->code;
         $token = $request->token;
 
-        $cacheKey= 'phone_verif'.$token;
+        $cacheKey= 'email_verif'.$token;
         if(!Cache::has($cacheKey)){
-            return response()->json(['error'=>'Kod geçersiz veya süresi dolmuş.'], 400);
+            return response()->json(['message'=>'Oturum geçersiz veya süresi dolmuş.'], 400);
         }
         $data = Cache::get($cacheKey);
         if($data['attempts']>=5){
             Cache::forget($cacheKey);
-            return response()->json(['error'=>'Çok fazla yanlış deneme. Tekrar istekte bulunun.'],429);
+            return response()->json(['message'=>'Çok fazla yanlış deneme. Tekrar istekte bulunun.'],429);
         }
 
         if(!Hash::check((string)$code, $data['code_hash'])){
             $data['attempts']++;
             Cache::put($cacheKey, $data, now()->addMinutes(5));
-            return response()->json(['error'=>'Kod yanlış.'], 400);
+            return response()->json(['message'=>'Doğrulama kodu yanlış.'], 400);
         }
         Cache::forget($cacheKey);
 
         $verifiedToken=(string) Str::uuid();
-        Cache::put('phone_verified:'.$verifiedToken,[
-            'phone'=>$data['phone']
+        Cache::put('email_verified:'.$verifiedToken,[
+            'email'=>$data['email']
         ],now()->addMinutes(10));
 
         return response()->json([
-            'message'=>'Telefon numarası doğrulandı',
-            'phone_verified_token'=>$verifiedToken,
+            'message'=>'E-mail adresi doğrulandı.',
+            'token'=>$verifiedToken,
         ],200);
     }
 

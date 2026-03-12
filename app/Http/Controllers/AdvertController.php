@@ -52,8 +52,7 @@ class AdvertController extends Controller
 
     public function getAdvert($slug){
         try {
-            $advert = Advert::where('slug',$slug)->with('product','product.images')->first();
-
+            $advert = Advert::where('slug',$slug)->with('product','product.images','product.activeDiscount')->first();
             $category = Category::findOrFail($advert->category_id);
             $path = $this->categoryService->breadcrumb($category);
 

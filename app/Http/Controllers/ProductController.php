@@ -63,7 +63,16 @@ class ProductController extends Controller
 
             $product = Product::findOrFail($id);
             // slug service 
-           
+            if($data['name']){
+                if($product->name!==$data['name']){
+                    $slug= Str::slug($data['name']);
+                    $slugCount= Product::where('slug','LIKE',"{$slug}%")->count();
+                    if($slugCount>0){
+                        $slug.='-'.($slugCount+1);
+                    }
+                    $data['slug'] = $slug;
+                }
+            }
             $product->update($data);
 
             return response()->json(['message' => 'Ürün güncelleme başarılı'], 200);
