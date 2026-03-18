@@ -79,11 +79,11 @@ Route::get('/getAddress',[UserAddressController::class,'getAddress'])->middlewar
 
 
 //CART
-Route::post('/storeCart',[CartController::class,'storeCart'])->middleware('auth:sanctum');
+Route::post('/storeCart',[CartController::class,'storeCart']);
 
-Route::post('/deleteCart',[CartController::class,'deleteCart'])->middleware('auth:sanctum');
+Route::post('/deleteCart',[CartController::class,'deleteCart']);
 
-Route::get('/getUsersCart',[CartController::class,'getUsersCart'])->middleware('auth:sanctum');
+Route::get('/getUsersCart',[CartController::class,'getUsersCart']);
 //CART
 
 

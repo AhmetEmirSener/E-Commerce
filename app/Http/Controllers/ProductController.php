@@ -63,6 +63,7 @@ class ProductController extends Controller
 
             $product = Product::findOrFail($id);
             // slug service 
+            /* 
             if($data['name']){
                 if($product->name!==$data['name']){
                     $slug= Str::slug($data['name']);
@@ -73,6 +74,7 @@ class ProductController extends Controller
                     $data['slug'] = $slug;
                 }
             }
+                */
             $product->update($data);
 
             return response()->json(['message' => 'Ürün güncelleme başarılı'], 200);
