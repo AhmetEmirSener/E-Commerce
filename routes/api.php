@@ -79,16 +79,18 @@ Route::get('/getAddress',[UserAddressController::class,'getAddress'])->middlewar
 
 
 //CART
-Route::post('/storeCart',[CartController::class,'storeCart']);
+Route::post('/storeCart',[CartController::class,'storeCart'])->middleware(AuthMiddleware::class);
 
-Route::post('/deleteCart',[CartController::class,'deleteCart']);
+Route::post('/deleteCart',[CartController::class,'deleteCart'])->middleware(AuthMiddleware::class);
 
 Route::get('/getUsersCart',[CartController::class,'getUsersCart']);
+
+Route::post('/changeSelected',[CartController::class,'changeSelected'])->middleware(AuthMiddleware::class);
 //CART
 
 
 //Check before order
-Route::get('/prepareOrder',[PaymentController::class,'prepareOrder'])->middleware(AuthMiddleware::class);
+Route::get('/prepareOrder',[PaymentController::class,'prepareOrder']);
 
 Route::post('/preparePayment',[PaymentController::class,'preparePayment'])->middleware(AuthMiddleware::class);
 

@@ -8,6 +8,7 @@ use App\Models\Order;
 
 use Stripe\Stripe;
 use Stripe\PaymentIntent;
+use App\Http\Resources\CartResource;
 
 use Illuminate\Http\Request;
 
@@ -16,8 +17,8 @@ class PaymentController extends Controller
     public function prepareOrder(Request $request){
         try {
 
-            $userId = $request->get('auth_user')->id;
-            $userCart = Cart::where('user_id',$userId)->where('is_selected',1)->with('product')->get();
+            //$user_id = $request->get('auth_user')->id;
+            $userCart = Cart::where('user_id',1)->where('is_selected',1)->with('product.advert','product.activeDiscount')->get();
             if ($userCart->isEmpty()) {
                 return response()->json(['message' => 'Sepetiniz boş.'], 400);
             }
@@ -26,10 +27,10 @@ class PaymentController extends Controller
 
             foreach ($userCart as $cart){
                 $product= $cart->product;
-                if (!$product) return $cart;
+                if (!$product) continue;
 
-                $price = ($product->is_discount_active && $product->price != $product->discount_price) ? $product->discount_price : $product->price;
-                $maxStock=$product->is_discount_active ? $product->discount_stock : $product->stock;
+                $price = $product->activeDiscount ? $product->activeDiscount->discount_price : $product->price;
+                $maxStock=$product->stock;
 
                 if ($maxStock == 0) {
                     $cart->delete();
@@ -55,19 +56,28 @@ class PaymentController extends Controller
 
                 $updatedCarts->push($cart);
             }
+            $subTotal = $updatedCarts->sum('total');
+
             $cargoFee = CargoFee::where('is_active',1)->first();
-            $totalPrice = $updatedCarts->sum('total');
-            $subTotal=$totalPrice;
             $appliedCargoFee=0;
-            
-            if($totalPrice<$cargoFee->free_shipping_threshold)
-            { $totalPrice+=$cargoFee->price;
+            if($cargoFee &&  $subTotal< $cargoFee->free_shipping_threshold){
                 $appliedCargoFee=$cargoFee->price;
             }
 
+            $total=$subTotal+$appliedCargoFee;
 
-            return response()->json(['data'=>$updatedCarts,'subTotal'=>$subTotal,'cargoFee'=>$cargoFee->price,
-            'orderCargoFee'=>$appliedCargoFee,'total'=>$totalPrice],200);
+
+
+            return response()->json([
+                'data'=>CartResource::collection($updatedCarts),
+                'summary'=>[
+                    'subTotal'=>$subTotal,
+                    'cargoFee'=>$cargoFee?->price ?? 0,
+                    'cargoCartFee'=>$appliedCargoFee,
+                    'total'=>$total
+                ],
+                ]);
+      
 
         } catch (\Exception $e) {
             return response()->json(['message'=>$e->getMessage()],500);
