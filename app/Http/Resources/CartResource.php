@@ -26,6 +26,7 @@ class CartResource extends JsonResource
             'price'=>$this->price,
             'quantity'=>$this->quantity,
             'total'=>$this->total,
+            'beforeDiscountTotal'=>$this->beforeDiscountTotal ?? null,
             'is_selected'=>$this->is_selected,
             'title'=>$advert->title,
             'slug'=>$advert->slug,

@@ -9,6 +9,7 @@ use App\Models\Advert;
 use App\Models\CargoFee;
 
 use App\Http\Resources\CartResource;
+use App\Services\CartService;
 
 use Illuminate\Support\Facades\DB;
 use Tymon\JWTAuth\Facades\JWTAuth;
@@ -17,6 +18,13 @@ use Tymon\JWTAuth\Facades\JWTAuth;
 
 class CartController extends Controller
 {
+    protected CartService $cartService;
+
+
+    public function __construct(CartService $cartService){
+        $this->cartService=$cartService;
+    }   
+
 
     public function storeCart(Request $request){
         try {
@@ -147,9 +155,11 @@ class CartController extends Controller
 
     public function getUsersCart(Request $request){
         try {
-            $carts = Cart::where('user_id',1)->with('product.advert','product.activeDiscount')->get();
+            $user_id = $request->auth_user->id;
+            $carts = Cart::where('user_id',$user_id)->with('product.advert','product.activeDiscount')->get();
             //return response()->json(['cart'=>$carts]);
-
+          
+           // return response()->json($updatedCarttt);
             if($carts->isEmpty()){
                 return response()->json([
                     'data' => [],
@@ -164,16 +174,18 @@ class CartController extends Controller
                 ], 200);
             }
           
+            $cartService = $this->cartService->updatedCart($carts,1);
+            $updatedCarts = $cartService['summary'];
+            $updatedSumm=$cartService['carts'];
+            //$productCount=0;
 
-            $productCount=0;
+            //$cartTotal=0;
 
-            $cartTotal=0;
+            //$originalTotal=0;
 
-            $originalTotal=0;
-
-            $cargoData =CargoFee::where('is_active',1)->first(); // cache ekle
-            $cargoFee = 0;
-
+           // $cargoData =CargoFee::where('is_active',1)->first(); // cache ekle
+           // $cargoFee = 0;
+            /*
             $updatedCarts=$carts->map(function ($cart) use(&$productCount,&$cartTotal,&$originalTotal)
             {
 
@@ -185,7 +197,10 @@ class CartController extends Controller
 
                 $cart->price =$productPrice;
                 $cart->total = $productPrice * $cart->quantity;
-
+               
+                if($discount){
+                    $cart->beforeDiscountTotal += $product->price * $cart->quantity;
+                }
                 if($cart->is_selected){
                     $productCount+=$cart->quantity;
      
@@ -198,9 +213,12 @@ class CartController extends Controller
                 return $cart;
 
             });
-            $cartCount =$updatedCarts->count();
-            $noneSelected = $carts->where('is_selected',1)->isEmpty();
+            */
 
+           // $cartCount =$updatedCarts->count();
+            //$noneSelected = $carts->where('is_selected',1)->isEmpty();
+
+            /* 
             if($cargoData &&!$noneSelected && $cartTotal<$cargoData->free_shipping_threshold){
                 $cargoFee = $cargoData->price;   
             }
@@ -208,23 +226,24 @@ class CartController extends Controller
             if($noneSelected){
                 $cargoFee = 0;
             }
+            */
   
-            $total = $cartTotal+$cargoFee;
+            //$total = $cartTotal+$cargoFee;
 
            // $total = $cartTotal+$cargoFee;
 
             return response()->json([
-                'data'=>CartResource::collection($updatedCarts),
+                'data'=>CartResource::collection($updatedSumm),
                 'summary'=>[
-                    'count'=>$productCount,
-                    'cartCount'=>$cartCount,
-                    'subTotal'=>$cartTotal,
-                    'cargoFee'=>$cargoData?->price ?? 0,
-                    'cargoCartFee'=>$cargoFee,
+                    'count'=>$updatedCarts['productCount'],
+                    'cartCount'=>$updatedCarts['cartCount'],
+                   // 'subTotal'=>$cartTotal,
+                    'cargoFee'=>$updatedCarts['cargoFee'],
+                    'cargoCartFee'=>$updatedCarts['cartCargoFee'],
 
-                    'originalTotal'=> $originalTotal,
-                    'discountTotal' => $originalTotal > $cartTotal ? $originalTotal - $cartTotal : 0,
-                    'total'=>$total
+                    'originalTotal'=> $updatedCarts['originalTotal'],
+                    'discountTotal' => $updatedCarts['discountTotal'],
+                    'total'=>$updatedCarts['total']
                     
                 ],
               
