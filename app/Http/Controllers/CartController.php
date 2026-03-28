@@ -153,110 +153,6 @@ class CartController extends Controller
         }
     }
 
-    public function getUsersCart(Request $request){
-        try {
-            $user_id = $request->auth_user->id;
-            $carts = Cart::where('user_id',$user_id)->with('product.advert','product.activeDiscount')->get();
-            //return response()->json(['cart'=>$carts]);
-          
-           // return response()->json($updatedCarttt);
-            if($carts->isEmpty()){
-                return response()->json([
-                    'data' => [],
-                    'summary' => [
-                        'count'      => 0,
-                        'cartCount'=>0,
-                        'subTotal'   => 0,
-                        'cargoFee'   => 0,
-                        'cargoCartFee' => 0,
-                        'total'      => 0
-                    ]
-                ], 200);
-            }
-          
-            $cartService = $this->cartService->updatedCart($carts,1);
-            $updatedCarts = $cartService['summary'];
-            $updatedSumm=$cartService['carts'];
-            //$productCount=0;
-
-            //$cartTotal=0;
-
-            //$originalTotal=0;
-
-           // $cargoData =CargoFee::where('is_active',1)->first(); // cache ekle
-           // $cargoFee = 0;
-            /*
-            $updatedCarts=$carts->map(function ($cart) use(&$productCount,&$cartTotal,&$originalTotal)
-            {
-
-
-                $product=$cart->product;
-                $discount = $product->activeDiscount;
-
-                $productPrice = $product->activeDiscount ? $product->activeDiscount->discount_price : $product->price;
-
-                $cart->price =$productPrice;
-                $cart->total = $productPrice * $cart->quantity;
-               
-                if($discount){
-                    $cart->beforeDiscountTotal += $product->price * $cart->quantity;
-                }
-                if($cart->is_selected){
-                    $productCount+=$cart->quantity;
-     
-                    $cartTotal+=$cart->total;
-                    $originalTotal+= $product->price * $cart->quantity;
-                }
-                
-        
-     
-                return $cart;
-
-            });
-            */
-
-           // $cartCount =$updatedCarts->count();
-            //$noneSelected = $carts->where('is_selected',1)->isEmpty();
-
-            /* 
-            if($cargoData &&!$noneSelected && $cartTotal<$cargoData->free_shipping_threshold){
-                $cargoFee = $cargoData->price;   
-            }
-
-            if($noneSelected){
-                $cargoFee = 0;
-            }
-            */
-  
-            //$total = $cartTotal+$cargoFee;
-
-           // $total = $cartTotal+$cargoFee;
-
-            return response()->json([
-                'data'=>CartResource::collection($updatedSumm),
-                'summary'=>[
-                    'count'=>$updatedCarts['productCount'],
-                    'cartCount'=>$updatedCarts['cartCount'],
-                   // 'subTotal'=>$cartTotal,
-                    'cargoFee'=>$updatedCarts['cargoFee'],
-                    'cargoCartFee'=>$updatedCarts['cartCargoFee'],
-
-                    'originalTotal'=> $updatedCarts['originalTotal'],
-                    'discountTotal' => $updatedCarts['discountTotal'],
-                    'total'=>$updatedCarts['total']
-                    
-                ],
-              
-            ]);
-            
-
-            // return response()->json(['data'=>$updatedCarts],200);
-
-        } catch (\Exception $e) {
-            return response()->json(['error'=>$e->getMessage()],500);
-        }
-    }
-
     public function changeSelected(Request $request){
         try {
             $request->validate([
@@ -276,5 +172,42 @@ class CartController extends Controller
         } catch (\Throwable $th) {
             return response()->json([$th->getMessage()],500);
         }
+    }
+
+      public function getUsersCart(Request $request){
+        try {
+            $user_id = $request->auth_user->id;
+            $carts = Cart::where('user_id',$user_id)->with('product.advert','product.activeDiscount')->get();
+          
+            if($carts->isEmpty()){
+                return response()->json([
+                    'data' => [],
+                    'summary' =>$this->emptySummary()
+                ], 200);
+            }
+          
+            $cartService = $this->cartService->updatedCart($carts);
+
+            return response()->json([
+                'data'=>CartResource::collection($cartService['carts']),
+                'summary'=>$cartService['summary'],
+              
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json(['error'=>$e->getMessage()],500);
+        }
+    }
+
+
+    private function emptySummary(){
+        return [
+            'count'=> 0,
+            'cartCount'=>0,
+            'subTotal'=> 0,
+            'cargoFee'=> 0,
+            'cargoCartFee'=> 0,
+            'total'=> 0
+        ];
     }
 }

@@ -17,6 +17,7 @@ class CartResource extends JsonResource
     public function toArray(Request $request): array
     {   
         $product = $this->product;
+        $discount = $product->activeDiscount;
         $advert = $this->product->advert;
         $discountPrice = $product?->activeDiscount?->discount_price ?? null;
         $discountType = $product?->activeDiscount?->discount_type ?? null;
@@ -26,7 +27,7 @@ class CartResource extends JsonResource
             'price'=>$this->price,
             'quantity'=>$this->quantity,
             'total'=>$this->total,
-            'beforeDiscountTotal'=>$this->beforeDiscountTotal ?? null,
+            'beforeDiscountTotal'=>$discount ? $product->price * $this->quantity : 0,
             'is_selected'=>$this->is_selected,
             'title'=>$advert->title,
             'slug'=>$advert->slug,

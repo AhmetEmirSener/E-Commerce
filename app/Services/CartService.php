@@ -15,7 +15,7 @@ class CartService
        
     }
 
-    public function updatedCart($cart,$update){
+    public function updatedCart($cart){
         $originalTotal = 0;
         $discountTotal=0;
         $productCount=0;
@@ -27,16 +27,18 @@ class CartService
 
         $cart->map(function ($cart) use(&$productCount,&$originalTotal,&$discountTotal,&$cartTotal,&$cargoData){
             $product = $cart->product;
-            $discount = $product->activeDiscount;
+           // $discount = $product->activeDiscount;
 
             $productPrice = $product->activeDiscount ? $product->activeDiscount->discount_price : $product->price;
 
             $cart->price = $productPrice;
             $cart->total = $productPrice * $cart->quantity;
-
+            
+            /*
             if($discount){
                 $cart->beforeDiscountTotal = $product->price * $cart->quantity;
             }
+            */
             if($cart->is_selected){
                 $productCount +=$cart->quantity;
                 
@@ -46,21 +48,26 @@ class CartService
             }
 
         });
-        $cartCount = $cart->where('is_selected',1)->count();
-        
-        if($cargoData && $cartTotal <$cargoData->free_shipping_threshold){
+        $cartCount = $cart->count();
+        $noneSelected = $cart->where('is_selected',1)->isEmpty();
+
+        if($cargoData && !$noneSelected && $cartTotal <$cargoData->free_shipping_threshold){
             $cargoFee = $cargoData->price;
         }
+
+        if($noneSelected) $cargoFee=0;
+
+        $subTotal = $cartTotal;
         $cartTotal+=$cargoFee;
          return [
         'carts' => $cart,
         'summary'=>[
             'cartCount'=>$cartCount,
             'productCount' => $productCount,
-            'cargoFee' => $cargoData->price,
+            'cargoFee' => $cargoData->price ?? 0,
             'cartCargoFee'=>$cargoFee,
             'originalTotal' => $originalTotal,
-            'discountTotal'=> $originalTotal >$cartTotal ? $originalTotal - $cartTotal : 0,
+            'discountTotal'=> $originalTotal >$subTotal ? $originalTotal - $subTotal : 0,
             'total' => $cartTotal,
 
         ]

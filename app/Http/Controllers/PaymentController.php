@@ -7,101 +7,81 @@ use App\Models\CargoFee;
 use App\Models\Order;
 use App\Models\UserAddress;
 
+use Illuminate\Support\Facades\DB;
 use Stripe\Stripe;
 use Stripe\PaymentIntent;
 use App\Http\Resources\CartResource;
 use App\Http\Resources\AddressResource;
 
+use App\Services\CartService;
+
 use Illuminate\Http\Request;
 
 class PaymentController extends Controller
 {
+    protected CartService $cartService;
+
+    public function __construct(CartService $cartService){
+        $this->cartService =$cartService;
+    }
+
     public function prepareOrder(Request $request){
         try {
+            return DB::transaction(function () use ($request){
 
+          
             $user_id = $request->get('auth_user')->id;
-            $userCart = Cart::where('user_id',1)->where('is_selected',1)->with('product.advert','product.activeDiscount')->get();
+            $carts = Cart::where('user_id',$user_id)->where('is_selected',1)->lockForUpdate()->with('product.advert','product.activeDiscount')->get();
             
-            if ($userCart->isEmpty()) {
-                return response()->json(['message' => 'Sepetiniz boş.'], 400);
+            if ($carts->isEmpty()) {
+                return response()->json(['message' => 'Sepette seçili ürün yok.'], 400);
             }
 
-            
-            $updatedCarts = collect();
-            $originalTotal=0;
-            $discountTotal = 0;
-            foreach ($userCart as $cart){
-                $product= $cart->product;
-                if (!$product) continue;
+            $cartService = $this->cartService->updatedCart($carts);
+            $returnMessages=collect();
+            foreach($cartService['carts'] as $cart){
 
-                $price = $product->activeDiscount ? $product->activeDiscount->discount_price : $product->price;
-                $discount = $product->activeDiscount;
+                $product = $cart->product;
+                if(!$product) continue;
 
-                $maxStock=$product->stock;
+                $maxStock = $product->stock;
 
-                if ($maxStock == 0) {
+                if($maxStock==0){
                     $cart->delete();
-                    return response()->json([
-                        'message' => "{$product->name} ürünü stokta kalmadığı için sepetten kaldırıldı."
-                    ], 404);
+                    $returnMessages->push("{$product->name} stoklarda kalmadığı için sepetten kaldırıldı");
+                    continue;
                 }
-
                 if($cart->quantity>$maxStock){
-                    $cart->quantity=$maxStock;
-                    $cart->total=$cart->quantity*$price;
-                    $cart->save();
-                    
-                    return response()->json(['message'=>"{$product->name} ürününden en fazla {$maxStock} adet alabilirsiniz"],404);
+                    $cart->quantity = $maxStock;
+                    $returnMessages->push( "{$product->name} stok miktarı kadar güncellendi"); 
                 }
-
-
-                $cart->price=$price;
-                $cart->total = $price*$cart->quantity;
-             
-                $cart->save();
                 
-                 if($discount) {
-                    $originalTotal += $cart->quantity * $product->price;
-                    $cart->beforeDiscountTotal = $cart->quantity * $product->price;
-                }
-
-                $updatedCarts->push($cart);
+                $cart->save();
             }
             
-
-            $subTotal = $updatedCarts->sum('total');
-
-            $discountTotal = $originalTotal-$subTotal;
-            $cartCount = $updatedCarts->count();
-
-            $cargoFee = CargoFee::where('is_active',1)->first();
-            $appliedCargoFee=0;
-            if($cargoFee &&  $subTotal< $cargoFee->free_shipping_threshold){
-                $appliedCargoFee=$cargoFee->price;
+            if($returnMessages->isNotEmpty()){
+                return response()->json([
+                    'status'=>'error',
+                    'action'=>'redirect',
+                    'key'=>'cart',
+                    'errors' => (object)$returnMessages->all(),
+                ],400);
             }
+
+            $freshCarts = Cart::where('user_id',$user_id)->where('is_selected',1)->with('product.advert','product.activeDiscount')->get();
+
+            $updatedCarts = $this->cartService->updatedCart($freshCarts);
+        
             $userAdress = UserAddress::where('user_id',$user_id)->where('is_default',1)->first();
 
-
-            $total=$subTotal+$appliedCargoFee;
-
-
-
             return response()->json([
-                'data'=>CartResource::collection($updatedCarts),
-                'summary'=>[
-                    'cartCount'=>$cartCount,
-                    'subTotal'=>$subTotal,
-                    'cargoFee'=>$cargoFee?->price ?? 0,
-                    'cargoCartFee'=>$appliedCargoFee,
-                    
-                    'originalTotal'=>$originalTotal,
-                    'discountTotal'=>$discountTotal,
-                    'total'=>$total
-                ],
+                'data'=>CartResource::collection($updatedCarts['carts']),
+                'summary'=>$updatedCarts['summary'],
+                'message'=>(object)$returnMessages,
                 'address'=>new AddressResource($userAdress)
                 ]);
       
-
+        });
         } catch (\Exception $e) {
             return response()->json(['message'=>$e->getMessage()],500);
 
