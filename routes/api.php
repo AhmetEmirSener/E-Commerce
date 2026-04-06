@@ -67,15 +67,17 @@ Route::post('/resetPassword',[UserController::class,'resetPassword']);
 
 
 //USER ADDRESS
-Route::post('/createAddress',[UserAddressController::class,'createAddress'])->middleware('auth:sanctum');
+Route::post('/createAddress',[UserAddressController::class,'createAddress'])->middleware(AuthMiddleware::class);
 
-Route::put('/updateAddress/{id}',[UserAddressController::class,'updateAddress'])->middleware('auth:sanctum');
+Route::put('/updateAddress/{id}',[UserAddressController::class,'updateAddress'])->middleware(AuthMiddleware::class);
 
-Route::delete('/deleteAddress/{id}',[UserAddressController::class,'deleteAddress'])->middleware('auth:sanctum');
+Route::delete('/deleteAddress/{id}',[UserAddressController::class,'deleteAddress'])->middleware(AuthMiddleware::class);
 
-Route::get('/getAddress',[UserAddressController::class,'getAddress'])->middleware('auth:sanctum');
+Route::get('/getAddress',[UserAddressController::class,'getAddress'])->middleware(AuthMiddleware::class);
+
+Route::get('/getDefaultAddress',[UserAddressController::class,'getDefaultAddress'])->middleware(AuthMiddleware::class);
+
 //USER ADDRESS
-
 
 
 //CART
@@ -90,7 +92,7 @@ Route::post('/changeSelected',[CartController::class,'changeSelected'])->middlew
 
 
 //Check before order
-Route::get('/prepareOrder',[PaymentController::class,'prepareOrder'])->middleware(AuthMiddleware::class);
+Route::post('/prepareOrder',[PaymentController::class,'prepareOrder'])->middleware(AuthMiddleware::class);
 
 Route::post('/preparePayment',[PaymentController::class,'preparePayment'])->middleware(AuthMiddleware::class);
 

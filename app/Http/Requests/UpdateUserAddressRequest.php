@@ -22,20 +22,28 @@ class UpdateUserAddressRequest extends FormRequest
     public function rules(): array
     {
         return [
+            //'address_id'=>'required | integer | exists:user_addresses,id',
             'full_name' => 'sometimes|required|string|max:50',
             'phone_number' => 'sometimes|required|string|max:11',
             'address_line' => 'sometimes|required|string|max:350',
+            'city_id'=>'sometimes|required',
             'city' => 'sometimes|required|string',
+            'state_id'=> 'sometimes|required',
             'state' => 'sometimes|required|string',
             'neighbourhood' => 'sometimes|required|string',
             'postal_code' => 'nullable|string',
-            'is_default' => 'boolean|nullable',
+            //'is_default' => 'boolean|nullable',
         ];
     }
 
     public function messages(): array
     {
         return [
+         /*
+            'address_id.required'=>'Adres bulunamadı',
+            'address_id.integer'=>'Adres numarası numara olmalı',
+            'address_id.exists'=>'Adres mevcut değil',
+            */
             'full_name.required' => 'İsim kısmı zorunludur.',
             'full_name.string' => 'İsim kısmı metin olmalıdır.',
             'full_name.max' => 'İsim kısmı en fazla 50 karakter olabilir.',
@@ -59,7 +67,7 @@ class UpdateUserAddressRequest extends FormRequest
 
             'postal_code.string' => 'Posta kodu metin olmalıdır.',
 
-            'is_default.boolean' => 'Varsayılan adres bilgisi geçersizdir.',
+            //'is_default.boolean' => 'Varsayılan adres bilgisi geçersizdir.',
         ];
     }
 }

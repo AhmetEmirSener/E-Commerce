@@ -139,6 +139,13 @@ class UserController extends Controller
             $validated = $request->validated();
 
             $email =$validated['email'];
+
+            $cacheLimit = 'password_reset_for_'.$email;
+            if(Cache::has($cacheLimit)){
+                return response()->json(['message'=>'Şifrenizi yakın zamanda değiştirdiniz'],429);
+            }
+
+
             $rateKey ='otp_rate'.$email;
 
             $user = User::where('email',$email)->first();
@@ -181,7 +188,7 @@ class UserController extends Controller
     
             $data = Cache::get($cacheKey);
             if(!$data){
-                return response()->json(['message'=>'Oturum geçersiz veya süresi dolmuş.'], 400);
+                return response()->json(['message'=>'Doğrulama kodu yanlış.'], 400);
             }
 
             if($data['attempts']>=5){
@@ -218,7 +225,6 @@ class UserController extends Controller
             $requestData = $request->validated();
 
 
-
             $cacheKey = 'password_reset_verified:'.$requestData['token'];
 
             $cache = Cache::get($cacheKey);
@@ -229,12 +235,14 @@ class UserController extends Controller
             unset($requestData['token']);
 
             $email = $cache['email'];
-            $cache['password']= Hash::make($requestData['passwordFirst']);
 
             $user= User::where('email',$cache['email'])->firstOrFail();
 
-            $user->password=$cache['password'];
+            $user->password=Hash::make($requestData['passwordFirst']);
             $user->save();
+
+            $cacheLimit = 'password_reset_for_'.$email;
+            Cache::put($cacheLimit,true,now()->addHours(6));
 
             return response()->json(['message'=>'Şifre sıfırlama başarılı, tekrar giriş yapınız']);
             

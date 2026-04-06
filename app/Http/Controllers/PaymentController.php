@@ -34,7 +34,13 @@ class PaymentController extends Controller
             $carts = Cart::where('user_id',$user_id)->where('is_selected',1)->lockForUpdate()->with('product.advert','product.activeDiscount')->get();
             
             if ($carts->isEmpty()) {
-                return response()->json(['message' => 'Sepette seçili ürün yok.'], 400);
+                return response()->json([
+                    'status' => 'error',
+                    'action'=>'redirect',
+                    'key'=>'cart',
+                    'errors' => ['Sepette seçili ürün yok.'],
+                    'message'=>'Sepette seçili ürün yok.'
+            ], 400);
             }
 
             $cartService = $this->cartService->updatedCart($carts);
@@ -64,21 +70,20 @@ class PaymentController extends Controller
                     'status'=>'error',
                     'action'=>'redirect',
                     'key'=>'cart',
-                    'errors' => (object)$returnMessages->all(),
+                    'errors' => $returnMessages->values()->all(),
+                    'message'=>'Sepet Güncellendi'
                 ],400);
             }
 
-            $freshCarts = Cart::where('user_id',$user_id)->where('is_selected',1)->with('product.advert','product.activeDiscount')->get();
+            $freshCarts = Cart::where('user_id',$user_id)->lockForUpdate()->where('is_selected',1)->with('product.advert','product.activeDiscount')->get();
 
             $updatedCarts = $this->cartService->updatedCart($freshCarts);
         
             $userAdress = UserAddress::where('user_id',$user_id)->where('is_default',1)->first();
-
             return response()->json([
                 'data'=>CartResource::collection($updatedCarts['carts']),
                 'summary'=>$updatedCarts['summary'],
-                'message'=>(object)$returnMessages,
-                'address'=>new AddressResource($userAdress)
+                'address'=>$userAdress ? new AddressResource($userAdress) : null,
                 ]);
       
         });
