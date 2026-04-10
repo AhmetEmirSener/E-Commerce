@@ -24,13 +24,15 @@ class CartService
         $cargoData = CargoFee::where('is_active',1)->first();
         $cargoFee=0;
 
-
-        $cart->map(function ($cart) use(&$productCount,&$originalTotal,&$discountTotal,&$cartTotal,&$cargoData){
+        $priceChanged = 0;
+        $cart->map(function ($cart) use(&$productCount,&$originalTotal,&$discountTotal,&$cartTotal,&$cargoData,&$priceChanged){
             $product = $cart->product;
            // $discount = $product->activeDiscount;
 
             $productPrice = $product->activeDiscount ? $product->activeDiscount->discount_price : $product->price;
-
+            if($cart->price !== $productPrice){
+                $priceChanged++;
+            }
             $cart->price = $productPrice;
             $cart->total = $productPrice * $cart->quantity;
             
@@ -70,7 +72,8 @@ class CartService
             'discountTotal'=> $originalTotal >$subTotal ? $originalTotal - $subTotal : 0,
             'total' => $cartTotal,
 
-        ]
+        ],
+        'priceChanged'=>$priceChanged ?? 0
   
         ];
         

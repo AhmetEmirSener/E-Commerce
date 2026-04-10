@@ -16,6 +16,10 @@ class User extends Authenticatable implements JWTSubject
 
     protected $guarded = [];
 
+    public function address(){
+        return $this->hasOne(UserAddress::class)->where('is_default',1);
+    }
+
     public function getJWTIdentifier()
     {
         return $this->getKey();

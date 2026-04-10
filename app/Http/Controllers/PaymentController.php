@@ -12,17 +12,26 @@ use Stripe\Stripe;
 use Stripe\PaymentIntent;
 use App\Http\Resources\CartResource;
 use App\Http\Resources\AddressResource;
+use Stripe\HttpClient\CurlClient;
+use Stripe\ApiRequestor;
 
 use App\Services\CartService;
+
+use App\Services\Iyzico\IyzicoService;
 
 use Illuminate\Http\Request;
 
 class PaymentController extends Controller
 {
     protected CartService $cartService;
+    protected IyzicoService $iyzicoService;
 
-    public function __construct(CartService $cartService){
+    public function __construct(CartService $cartService, IyzicoService $iyzicoService){
         $this->cartService =$cartService;
+
+        $this->iyzicoService = $iyzicoService;
+
+
     }
 
     public function prepareOrder(Request $request){
@@ -64,7 +73,10 @@ class PaymentController extends Controller
                 
                 $cart->save();
             }
-            
+            if($cartService['priceChanged']){
+                $returnMessages->push("Bazı ürün veya ürünlerde fiyat değişikliği yaşandı. Sepetinizi kontrol ediniz");
+            }
+  
             if($returnMessages->isNotEmpty()){
                 return response()->json([
                     'status'=>'error',
@@ -74,6 +86,7 @@ class PaymentController extends Controller
                     'message'=>'Sepet Güncellendi'
                 ],400);
             }
+            
 
             $freshCarts = Cart::where('user_id',$user_id)->lockForUpdate()->where('is_selected',1)->with('product.advert','product.activeDiscount')->get();
 
@@ -98,37 +111,72 @@ class PaymentController extends Controller
 
         try {
 
-            $user = $request->get('auth_user');
-            $userCart = Cart::where('user_id',$user->id)->where('is_selected',1)->get();
-
+            $user = $request->get('auth_user')->with('address')->first();
+            $userAddress = $user->address;
+        
+            $userCart = Cart::where('user_id',$user->id)->where('is_selected',1)->with('product.advert','product.activeDiscount')->get();
+         
             if($userCart->isEmpty()){
                 return response()->json(['message'=>'Sepetiniz boş.'],400);
             }
 
             $total = $userCart->sum('total');
-            
+
             if ($total <= 0) {
                 return response()->json(['message' => 'Geçersiz toplam tutar.'], 400);
             }
+
+
+
+            $freshTotal = $this->cartService->updatedCart($userCart)['summary']['total'];
+            
+            if($total !== $freshTotal){
+                return $this->prepareOrder($request);
+            }
+
 
             $order= Order::create([
 
                 'user_id'=>$user->id,
                 'ordered_at'=>now(),
-                'users_address_id'=>4,   //$request->selected_address,
+                'users_address_id'=>$user->address->id,
                 'total'=>$total,
                 'payment_status'=>'pending'
 
             ]);
 
+            $result = $this->iyzicoService->initializeCheckoutForm([
+                'order_id'=>$order->id,
+                'total'=>$total,
+                'user'=>[
+                    'id'=>$user->id,
+                    'name'=>$user->name,
+                    'surname'=>$user->surname,
+                    'email'=>$user->email,
+                    'address'=>'Türkiye',
+                    'city'=>$user->address->city,
 
 
-            Stripe::setApiKey(env('STRIPE_SECRET'));
-            $intent= PaymentIntent::create([
-                'amount'=>intval(round($total*100)),
-                'currency'=>'try',
-                'metadata'=>['order_id'=>$order->id],
+                ],
+                'items'=>$userCart,
+                'ip'=>$request->ip(),
             ]);
+
+
+            if($result->getStatus() !== 'success'){
+                return response()->json([
+                    'message'=>$result->getErrorMessage()
+                ],400);
+            }
+
+            return response()->json([
+                'token'               => $result->getToken(),
+                'checkoutFormContent' => $result->getCheckoutFormContent(),
+            ]);
+
+
+
+        
 
 
 

@@ -22,9 +22,9 @@ use App\Http\Controllers\CampaignRulesController;
 
 
 
-Route::get('/user', function (Request $request) {
-    return $request->user();
-})->middleware('auth:sanctum');
+Route::get('/me', function (Request $request) {
+    return $request->user()->only('id','name','surname','role','phone_number');
+})->middleware(AuthMiddleware::class);
 
 //PRODUCT 
 Route::get('/getProducts',[ProductController::class,'getProducts'])->middleware(AuthMiddleware::class);
@@ -67,13 +67,17 @@ Route::post('/resetPassword',[UserController::class,'resetPassword']);
 
 
 //USER ADDRESS
-Route::post('/createAddress',[UserAddressController::class,'createAddress'])->middleware(AuthMiddleware::class);
+Route::get('/addresses',[UserAddressController::class,'getAddress'])->middleware(AuthMiddleware::class);
 
-Route::put('/updateAddress/{id}',[UserAddressController::class,'updateAddress'])->middleware(AuthMiddleware::class);
+Route::post('/addresses',[UserAddressController::class,'createAddress'])->middleware(AuthMiddleware::class);
 
-Route::delete('/deleteAddress/{id}',[UserAddressController::class,'deleteAddress'])->middleware(AuthMiddleware::class);
+Route::put('/addresses/{id}',[UserAddressController::class,'updateAddress'])->middleware(AuthMiddleware::class);
 
-Route::get('/getAddress',[UserAddressController::class,'getAddress'])->middleware(AuthMiddleware::class);
+Route::patch('/addresses/{id}/default',[UserAddressController::class,'updateToDefault'])->middleware(AuthMiddleware::class);
+
+
+Route::delete('/addresses/{id}',[UserAddressController::class,'deleteAddress'])->middleware(AuthMiddleware::class);
+
 
 Route::get('/getDefaultAddress',[UserAddressController::class,'getDefaultAddress'])->middleware(AuthMiddleware::class);
 
