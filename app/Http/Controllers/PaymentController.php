@@ -5,7 +5,10 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\Cart;
 use App\Models\CargoFee;
 use App\Models\Order;
+use App\Models\OrderItem;
+
 use App\Models\UserAddress;
+use Illuminate\Support\Facades\Cache;
 
 use Illuminate\Support\Facades\DB;
 use Stripe\Stripe;
@@ -18,6 +21,8 @@ use Stripe\ApiRequestor;
 use App\Services\CartService;
 
 use App\Services\Iyzico\IyzicoService;
+use App\Http\Resources\OrderResource;
+use App\Http\Requests\CheckCardInfosRequest;
 
 use Illuminate\Http\Request;
 
@@ -107,9 +112,9 @@ class PaymentController extends Controller
 
     }
 
-    public function preparePayment(Request $request){
-
+    public function preparePayment(CheckCardInfosRequest $request){
         try {
+            $data = $request->validated();
 
             $user = $request->get('auth_user')->with('address')->first();
             $userAddress = $user->address;
@@ -117,7 +122,14 @@ class PaymentController extends Controller
             $userCart = Cart::where('user_id',$user->id)->where('is_selected',1)->with('product.advert','product.activeDiscount')->get();
          
             if($userCart->isEmpty()){
-                return response()->json(['message'=>'Sepetiniz boş.'],400);
+                return response()->json(
+                    [
+                        'status'=>'error',
+                        'message'=>'Sepetiniz boş.',
+                        'key'=>'cart',
+                        'action'=>'redirect',
+                    ]
+                ,400);
             }
 
             $total = $userCart->sum('total');
@@ -127,27 +139,43 @@ class PaymentController extends Controller
             }
 
 
+            $freshCart = $this->cartService->updatedCart($userCart);
+            $freshTotal = $freshCart['summary']['subTotal'];
 
-            $freshTotal = $this->cartService->updatedCart($userCart)['summary']['total'];
-            
             if($total !== $freshTotal){
                 return $this->prepareOrder($request);
             }
 
+            $cartCargoFee = $freshCart['summary']['cartCargoFee'];
+            $paidPrice = $cartCargoFee + $total;
 
             $order= Order::create([
 
                 'user_id'=>$user->id,
                 'ordered_at'=>now(),
                 'users_address_id'=>$user->address->id,
-                'total'=>$total,
+                'total'=>$paidPrice,
+                'cargo_fee'=>$cartCargoFee,
                 'payment_status'=>'pending'
 
             ]);
 
-            $result = $this->iyzicoService->initializeCheckoutForm([
+     
+            
+            
+            $result = $this->iyzicoService->initialize3DS([
                 'order_id'=>$order->id,
                 'total'=>$total,
+                'paidPrice'=>$paidPrice,
+                'save_card'=>$data['save_card'] ?? 0,
+                'card_user_key'=>$user->iyzico_card_user_key ?? null,
+                'card'=>[
+                    'holder_name'=>$data['card_holder_name'],
+                    'number'=>$data['card_number'] ,
+                    'expire_month'=>$data['expire_month'],
+                    'expire_year'=>$data['expire_year'],
+                    'cvc'=>$data['cvc']
+                ],
                 'user'=>[
                     'id'=>$user->id,
                     'name'=>$user->name,
@@ -169,23 +197,28 @@ class PaymentController extends Controller
                 ],400);
             }
 
+            foreach($userCart as $items){
+                OrderItem::create([
+                    'order_id'=>$order->id,
+                    'product_id'=>$items->product_id,
+                    'quantity'=>$items->quantity,
+                    'price'=>$items->price,
+                    'total'=>$items->total
+                ]);
+            }
+
+
+     
+
+            return response()->json([
+                'html_content'=>$result->getHtmlContent()
+            ]);
+
             return response()->json([
                 'token'               => $result->getToken(),
                 'checkoutFormContent' => $result->getCheckoutFormContent(),
             ]);
-
-
-
-        
-
-
-
-            return response()->json([
-                'order_id'=>$order->id,
-                'client_secret'=>$intent->client_secret,
-                'total'=>$total,
-            ]);
-
+ 
 
 
         }catch (\Exception $e) {
@@ -194,4 +227,78 @@ class PaymentController extends Controller
 
         }
 
-    }}
+    }
+
+    public function callback(Request $request ){
+
+        $status = $request->status;
+        $mdStatus = $request->mdStatus;
+        $paymentId = $request->paymentId;
+        $conversationId = $request->conversationId;
+
+        if ($status !== 'success' || $mdStatus != 1) {
+            return redirect('http://localhost:4200/payment/result?status=failed');
+        }
+
+        $result = $this->iyzicoService->complete3DS($paymentId, $conversationId);
+       
+        if ($result->getStatus() !== 'success') {
+            return redirect('http://localhost:4200/payment/result?status=failed');
+        }
+
+        $order = Order::where('id', $conversationId)->first();
+        $order->update([
+            'payment_status'        => 'completed',
+            'payment_id'    => $result->getPaymentId(),
+        ]);
+
+        $order->user->cartItems()->delete();
+
+        $resultToken = \Str::random(64);
+
+        cache()->put('payment_result_' . $resultToken, [
+            'status'=>'success',
+            'order_id'=>$order->id
+        ], now()->addMinutes(60));
+
+
+        return redirect('http://localhost:4200/payment/result?token=' . $resultToken);
+
+        /*
+        if ($result->getCardToken() && $result->getCardUserKey()) {
+            $order->user->update([
+                'iyzico_card_token'    => $result->getCardToken(),
+                'iyzico_card_user_key' => $result->getCardUserKey(),
+            ]);
+        }
+            */
+    }
+
+
+
+    public function paymentResult(Request $request, $token){
+        $data = cache()->get('payment_result_'.$token);
+                
+        if(!$data){
+            return response()->json(['message' => 'Sayfa bulunamadı'], 404);
+        }   
+
+        $userId = $request->get('auth_user')->id;
+
+        $order = Order::where('id',$data['order_id'])->with('orderItems.product')->first();
+        
+        if($order->user_id !== $userId){
+            return response()->json(['message' => 'Sayfa bulunamadı'], 403);
+        }
+
+        return new OrderResource($order);
+
+        return response()->json($order);
+
+
+        return response()->json('SALAMLAR');
+        
+    }
+
+
+}

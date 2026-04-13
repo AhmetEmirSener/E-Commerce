@@ -8,6 +8,11 @@ use Iyzipay\Model\Buyer;
 use Iyzipay\Model\Address;
 use Iyzipay\Model\BasketItem;
 use Iyzipay\Model\BasketItemType;
+use Iyzipay\Model\ThreedsInitialize;
+use Iyzipay\Request\CreatePaymentRequest;
+use Iyzipay\Model\PaymentCard;
+use Iyzipay\Model\ThreedsPayment;
+use Iyzipay\Request\CreateThreedsPaymentRequest;
 
 class IyzicoService
 {
@@ -85,4 +90,84 @@ class IyzicoService
         return CheckoutFormInitialize::create($request, $this->options);
 
     }   
+
+
+    public function initialize3DS(array $data):ThreedsInitialize{
+        $request = new CreatePaymentRequest();
+        $request->setlocale('tr');
+        $request->setConversationId((string) $data['order_id']);
+        $request->setPrice($data['total']);
+        $request->setPaidPrice($data['paidPrice']);
+        $request->setCurrency('TRY');
+        $request->setInstallment(1);
+        $request->setBasketId((string) $data['order_id']);
+        $request->setPaymentChannel('WEB');
+        $request->setPaymentGroup('PRODUCT');
+        $request->setCallbackUrl(config('app.url') . '/api/payment/callback');
+
+        $paymentCard = new PaymentCard();
+        $paymentCard->setCardHolderName($data['card']['holder_name']);
+        $paymentCard->setCardNumber($data['card']['number']);
+        $paymentCard->setExpireMonth($data['card']['expire_month']);
+        $paymentCard->setExpireYear($data['card']['expire_year']);
+        $paymentCard->setCvc($data['card']['cvc']);
+        $paymentCard->setRegisterCard($data['save_card'] ? 1 : 0);
+        
+        $request->setPaymentCard($paymentCard);
+
+
+        $buyer = new Buyer();
+        $buyer->setId((string) $data['user']['id']);
+        $buyer->setName($data['user']['name']);
+        $buyer->setSurname($data['user']['surname']);
+        $buyer->setEmail($data['user']['email']);
+        $buyer->setIdentityNumber('11111111111');
+        $buyer->setRegistrationAddress($data['user']['address']);
+        $buyer->setCity($data['user']['city']);
+        $buyer->setCountry('Turkey');
+        $buyer->setIp($data['ip']);
+        $request->setBuyer($buyer);
+
+
+        $shippingAddress = new Address();
+        $shippingAddress->setContactName($data['user']['name'] . ' ' . $data['user']['surname']);
+        $shippingAddress->setCity($data['user']['city']);
+        $shippingAddress->setCountry('Turkey');
+        $shippingAddress->setAddress($data['user']['address']);
+        $request->setShippingAddress($shippingAddress);
+
+        $billingAddress = new Address();
+        $billingAddress->setContactName($data['user']['name'] . ' ' . $data['user']['surname']);
+        $billingAddress->setCity($data['user']['city']);
+        $billingAddress->setCountry('Turkey');
+        $billingAddress->setAddress($data['user']['address']);
+        $request->setBillingAddress($billingAddress);
+
+
+        $basketItems = [];
+        foreach ($data['items'] as $item) {
+            $basketItem = new BasketItem();
+            $basketItem->setId((string) $item['id']);
+            $basketItem->setName($item['product']['name']);
+            $basketItem->setCategory1($item['product']['category_id']);
+            $basketItem->setItemType(BasketItemType::PHYSICAL);
+            $basketItem->setPrice($item['total']);
+            $basketItems[] = $basketItem;
+        }
+        $request->setBasketItems($basketItems);
+
+
+        return ThreedsInitialize::create($request, $this->options);
+
+    }
+
+    public function complete3DS(string $paymentId, string $conversationId):ThreedsPayment{
+        $request = new CreateThreedsPaymentRequest();
+        $request->setlocale('tr');
+        $request->setConversationId($conversationId);
+        $request->setPaymentId($paymentId);
+
+        return ThreedsPayment::create($request, $this->options);
+
+    }
 }

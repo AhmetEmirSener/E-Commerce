@@ -16,6 +16,10 @@ class User extends Authenticatable implements JWTSubject
 
     protected $guarded = [];
 
+    public function cartItems(){
+        return $this->hasMany(Cart::class)->where('is_selected',1);
+    }
+
     public function address(){
         return $this->hasOne(UserAddress::class)->where('is_default',1);
     }

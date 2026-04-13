@@ -101,6 +101,10 @@ Route::post('/prepareOrder',[PaymentController::class,'prepareOrder'])->middlewa
 Route::post('/preparePayment',[PaymentController::class,'preparePayment'])->middleware(AuthMiddleware::class);
 
 
+Route::post('/payment/callback', [PaymentController::class, 'callback']);
+
+Route::get('/payment/result/{token}',[PaymentController::class,'paymentResult'])->middleware(AuthMiddleware::class);
+
 Route::post('/stripe/webhook',[StripeWebhookController::class,'handle']);
 
 // BRAND 
