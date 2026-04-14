@@ -79,4 +79,14 @@ class CartService
         
         
     }   
+
+
+
+    public function calculateTotalwCargoFee($total){
+        $cargoData = CargoFee::where('is_active',1)->first();
+        if($total< $cargoData->free_shipping_threshold){
+            $total += $cargoData->price;
+        }
+        return $total;
+    }
 }

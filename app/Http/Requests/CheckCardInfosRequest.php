@@ -40,6 +40,8 @@ class CheckCardInfosRequest extends FormRequest
 
 
             'save_card' => ['nullable', 'boolean'],
+
+            'installment'=>['nullable', 'digits_between:1,12']
         ];
 
     }

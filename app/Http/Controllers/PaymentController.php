@@ -6,6 +6,7 @@ use App\Models\Cart;
 use App\Models\CargoFee;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\SavedCard;
 
 use App\Models\UserAddress;
 use Illuminate\Support\Facades\Cache;
@@ -23,6 +24,9 @@ use App\Services\CartService;
 use App\Services\Iyzico\IyzicoService;
 use App\Http\Resources\OrderResource;
 use App\Http\Requests\CheckCardInfosRequest;
+use App\Http\Requests\Payment\CheckTokenPaymentRequest;
+
+use App\Http\Requests\Payment\CheckInstallments;
 
 use Illuminate\Http\Request;
 
@@ -43,7 +47,6 @@ class PaymentController extends Controller
         try {
             return DB::transaction(function () use ($request){
 
-          
             $user_id = $request->get('auth_user')->id;
             $carts = Cart::where('user_id',$user_id)->where('is_selected',1)->lockForUpdate()->with('product.advert','product.activeDiscount')->get();
             
@@ -96,11 +99,23 @@ class PaymentController extends Controller
             $freshCarts = Cart::where('user_id',$user_id)->lockForUpdate()->where('is_selected',1)->with('product.advert','product.activeDiscount')->get();
 
             $updatedCarts = $this->cartService->updatedCart($freshCarts);
-        
+            $userSavedCards = SavedCard::where('user_id',$user_id)->select('id','card_alias','last_four','is_default','bin_number')->get();
+            $defaultCard=$userSavedCards->where('is_default',1)->first();
+            if($defaultCard){
+                $result = $this->iyzicoService->getInstallments($defaultCard->bin_number,$updatedCarts['summary']['total']);
+                
+                if($result->getStatus() !== 'success'){
+                    return response()->json(['error'=>$result->getErrorMessage()]);
+                }
+
+                $installments=$this->handleInstallments($result,$updatedCarts['summary']['total']);
+            }
             $userAdress = UserAddress::where('user_id',$user_id)->where('is_default',1)->first();
             return response()->json([
                 'data'=>CartResource::collection($updatedCarts['carts']),
                 'summary'=>$updatedCarts['summary'],
+                'savedCards'=>$userSavedCards,
+                'installments'=>$installments,
                 'address'=>$userAdress ? new AddressResource($userAdress) : null,
                 ]);
       
@@ -112,15 +127,12 @@ class PaymentController extends Controller
 
     }
 
-    public function preparePayment(CheckCardInfosRequest $request){
+    public function buildOrder($data, $user){
         try {
-            $data = $request->validated();
 
-            $user = $request->get('auth_user')->with('address')->first();
             $userAddress = $user->address;
         
             $userCart = Cart::where('user_id',$user->id)->where('is_selected',1)->with('product.advert','product.activeDiscount')->get();
-         
             if($userCart->isEmpty()){
                 return response()->json(
                     [
@@ -143,11 +155,25 @@ class PaymentController extends Controller
             $freshTotal = $freshCart['summary']['subTotal'];
 
             if($total !== $freshTotal){
-                return $this->prepareOrder($request);
+                return response()->json('SALAMLAR');
+                //return $this->prepareOrder($request);
             }
 
             $cartCargoFee = $freshCart['summary']['cartCargoFee'];
             $paidPrice = $cartCargoFee + $total;
+
+            if(!empty($data['installment']) && $data['installment'] >1){
+                $cardNumber = $data['card_number'] ?? null;
+                $binNumber = $data['bin_number'] ?? null;
+
+                if (!$cardNumber && !$binNumber) return;
+
+
+                $bin = $cardNumber ? substr($cardNumber, 0, 6) : $binNumber;
+
+                $paidPrice = $this->iyzicoService->getPaidPrice($bin,$paidPrice,$data['installment']);
+            }
+            
 
             $order= Order::create([
 
@@ -156,46 +182,10 @@ class PaymentController extends Controller
                 'users_address_id'=>$user->address->id,
                 'total'=>$paidPrice,
                 'cargo_fee'=>$cartCargoFee,
-                'payment_status'=>'pending'
+                'payment_status'=>'pending',
+                'save_card'=>$data['save_card'] ?? 0
 
             ]);
-
-     
-            
-            
-            $result = $this->iyzicoService->initialize3DS([
-                'order_id'=>$order->id,
-                'total'=>$total,
-                'paidPrice'=>$paidPrice,
-                'save_card'=>$data['save_card'] ?? 0,
-                'card_user_key'=>$user->iyzico_card_user_key ?? null,
-                'card'=>[
-                    'holder_name'=>$data['card_holder_name'],
-                    'number'=>$data['card_number'] ,
-                    'expire_month'=>$data['expire_month'],
-                    'expire_year'=>$data['expire_year'],
-                    'cvc'=>$data['cvc']
-                ],
-                'user'=>[
-                    'id'=>$user->id,
-                    'name'=>$user->name,
-                    'surname'=>$user->surname,
-                    'email'=>$user->email,
-                    'address'=>'Türkiye',
-                    'city'=>$user->address->city,
-
-
-                ],
-                'items'=>$userCart,
-                'ip'=>$request->ip(),
-            ]);
-
-
-            if($result->getStatus() !== 'success'){
-                return response()->json([
-                    'message'=>$result->getErrorMessage()
-                ],400);
-            }
 
             foreach($userCart as $items){
                 OrderItem::create([
@@ -207,18 +197,26 @@ class PaymentController extends Controller
                 ]);
             }
 
+            return [
+                'order'      => $order,
+                'userCart'   => $userCart,
+                'order_id'   => $order->id,
+                'total'      => $total,
+                'paidPrice'  => $paidPrice,
+                'installment'=> $data['installment'] ?? 1,
+                'save_card'  => $data['save_card'] ?? 0,
+                'user'       => [
+                    'id'      => $user->id,
+                    'name'    => $user->name,
+                    'surname' => $user->surname,
+                    'email'   => $user->email,
+                    'address' => 'Türkiye',
+                    'city'    => $user->address->city,
+                ],
+                'items' => $userCart,
+                
+            ];
 
-     
-
-            return response()->json([
-                'html_content'=>$result->getHtmlContent()
-            ]);
-
-            return response()->json([
-                'token'               => $result->getToken(),
-                'checkoutFormContent' => $result->getCheckoutFormContent(),
-            ]);
- 
 
 
         }catch (\Exception $e) {
@@ -229,7 +227,69 @@ class PaymentController extends Controller
 
     }
 
-    public function callback(Request $request ){
+    public function payWithCard(CheckCardInfosRequest $request){
+        $data = $request->validated();
+        $user = $request->get('auth_user')->load('address');
+        $orderData = $this->buildOrder($data,$user);
+        if ($orderData instanceof JsonResponse) return $orderData; 
+
+        $result = $this->iyzicoService->initialize3DS([
+            ...$orderData,
+            'card'=>[
+                'holder_name'=>$data['card_holder_name'],
+                'number'=>$data['card_number'] ,
+                'expire_month'=>$data['expire_month'],
+                'expire_year'=>$data['expire_year'],
+                'cvc'=>$data['cvc'],
+            ],
+            'ip'=> $request->ip(),
+
+        ]);
+        return $this->handleIyzicoResult($result);
+
+    }
+
+    public function payWithSavedCard(CheckTokenPaymentRequest $request){
+        $data = $request->validated();
+        $user = $request->get('auth_user')->load('address');
+        $savedCard = SavedCard::where('user_id',$user->id)->where('id',$data['saved_card_id'])->first();
+        if(!$savedCard){
+            return response()->json(['message'=>'Kayıtlı kart bulunamadı.'],404);
+        }   
+        $data['bin'] = $savedCard->bin_number ?? 0;
+        $orderData = $this->buildOrder($data,$user);
+        if ($orderData instanceof JsonResponse) return $orderData; 
+
+
+        $result = $this->iyzicoService->initialize3DSWithToken([
+            ...$orderData,
+            'card_token'=>$savedCard->card_token,
+            'card_user_key'=>$savedCard->card_user_key,
+            'ip'=> $request->ip(),
+        ]);
+
+        return $this->handleIyzicoResult($result);
+
+    }
+
+    public function handleIyzicoResult($result){
+        if($result->getStatus() !== 'success'){
+            return response()->json([
+                'message'=>$result->getErrorMessage()
+            ],400);
+        }
+
+        return response()->json([
+            'html_content'=>$result->getHtmlContent()
+        ]);
+    }
+
+
+
+
+
+
+    public function callback(Request $request){
 
         $status = $request->status;
         $mdStatus = $request->mdStatus;
@@ -251,6 +311,24 @@ class PaymentController extends Controller
             'payment_status'        => 'completed',
             'payment_id'    => $result->getPaymentId(),
         ]);
+
+        if($result->getCardToken() && $result->getCardUserKey() && $order->save_card){
+            SavedCard::updateOrCreate(
+                [
+                    'user_id'=>$order->user_id,
+                    'card_token'=>$result->getCardToken(),
+                ],
+                [
+                    'card_user_key'=>$result->getCardUserKey(),
+                    'card_alias'=>'Kart ' . $result->getLastFourDigits(),
+                    'card_bank'=> '',
+                    'card_family'=>'',
+                    'card_type'=>'',
+                    'last_four'=>$result->getLastFourDigits() ?? '',
+                    'is_default'=>!SavedCard::where('user_id',$order->user_id)->exists()
+                ]
+                );
+        }
 
         $order->user->cartItems()->delete();
 
@@ -298,6 +376,56 @@ class PaymentController extends Controller
 
         return response()->json('SALAMLAR');
         
+    }
+
+
+    public function getInstallments(CheckInstallments $request){
+        try {
+            $data = $request->validated();
+            $user = $request->get('auth_user');
+            $cartItems = $user->cartItems()->with('product.activeDiscount')->get();
+
+            if($cartItems->isEmpty()) return response()->json(['message'=>'Sepetiniz boş.'],400);
+
+            $subTotal = $cartItems->sum('total');
+            $total = $this->cartService->calculateTotalwCargoFee($subTotal);
+
+            $result = $this->iyzicoService->getInstallments($data['card_number'],$total);
+
+            if($result->getStatus() !== 'success'){
+                return response()->json(['error'=>$result->getErrorMessage()]);
+            }
+
+            $installments=$this->handleInstallments($result,$total);
+            
+
+            return response()->json([
+                'installments'=>$installments,
+                'card_type'=>$result->getInstallmentDetails()[0]->getCardType() ?? null,
+                'card_family'=>$result->getInstallmentDetails()[0]->getCardFamilyName() ?? null
+            ]);
+        } catch (\Throwable $th) {
+            return response()->json(['message'=>$th->getMessage()],500);
+        }
+    }
+
+
+
+    public function handleInstallments($result,float $total){
+        $installments=[];
+
+        foreach($result->getInstallmentDetails() as $detail){
+            foreach($detail->getInstallmentPrices() as $installmentPrice){
+                $installments[]=[
+                    'installment'=> $installmentPrice->getInstallmentNumber(),
+                    'installment_price'=>$installmentPrice->getInstallmentPrice(),
+                    'installment_diff'=>round($installmentPrice->getTotalPrice() - $total,2),
+                    'total_price'=>$installmentPrice->getTotalPrice()
+                ];
+            }
+        }
+
+        return $installments;
     }
 
 

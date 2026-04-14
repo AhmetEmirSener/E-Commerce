@@ -98,7 +98,7 @@ Route::post('/changeSelected',[CartController::class,'changeSelected'])->middlew
 //Check before order
 Route::post('/prepareOrder',[PaymentController::class,'prepareOrder'])->middleware(AuthMiddleware::class);
 
-Route::post('/preparePayment',[PaymentController::class,'preparePayment'])->middleware(AuthMiddleware::class);
+// Route::post('/preparePayment',[PaymentController::class,'preparePayment'])->middleware(AuthMiddleware::class);
 
 
 Route::post('/payment/callback', [PaymentController::class, 'callback']);
@@ -106,6 +106,15 @@ Route::post('/payment/callback', [PaymentController::class, 'callback']);
 Route::get('/payment/result/{token}',[PaymentController::class,'paymentResult'])->middleware(AuthMiddleware::class);
 
 Route::post('/stripe/webhook',[StripeWebhookController::class,'handle']);
+
+Route::post('/payment/installment',[PaymentController::class,'getInstallments'])->middleware(AuthMiddleware::class);
+
+
+Route::post('/payment/charge',[PaymentController::class,'payWithCard'])->middleware(AuthMiddleware::class);
+
+Route::post('/payment/charge/savedCard',[PaymentController::class,'payWithSavedCard'])->middleware(AuthMiddleware::class);
+
+
 
 // BRAND 
 
