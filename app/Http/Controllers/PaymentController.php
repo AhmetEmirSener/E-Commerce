@@ -10,7 +10,7 @@ use App\Models\SavedCard;
 
 use App\Models\UserAddress;
 use Illuminate\Support\Facades\Cache;
-
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Stripe\Stripe;
 use Stripe\PaymentIntent;
@@ -22,6 +22,8 @@ use Stripe\ApiRequestor;
 use App\Services\CartService;
 
 use App\Services\Iyzico\IyzicoService;
+use App\Services\StockService;
+
 use App\Http\Resources\OrderResource;
 use App\Http\Requests\CheckCardInfosRequest;
 use App\Http\Requests\Payment\CheckTokenPaymentRequest;
@@ -34,11 +36,15 @@ class PaymentController extends Controller
 {
     protected CartService $cartService;
     protected IyzicoService $iyzicoService;
-
-    public function __construct(CartService $cartService, IyzicoService $iyzicoService){
+    protected StockService $stockService;
+    
+    public function __construct(CartService $cartService, IyzicoService $iyzicoService,StockService $stockService){
         $this->cartService =$cartService;
 
         $this->iyzicoService = $iyzicoService;
+
+        $this->stockService = $stockService;
+
 
 
     }
@@ -81,10 +87,12 @@ class PaymentController extends Controller
                 
                 $cart->save();
             }
+            /*
             if($cartService['priceChanged']){
                 $returnMessages->push("Bazı ürün veya ürünlerde fiyat değişikliği yaşandı. Sepetinizi kontrol ediniz");
             }
-  
+            */
+
             if($returnMessages->isNotEmpty()){
                 return response()->json([
                     'status'=>'error',
@@ -99,7 +107,7 @@ class PaymentController extends Controller
             $freshCarts = Cart::where('user_id',$user_id)->lockForUpdate()->where('is_selected',1)->with('product.advert','product.activeDiscount')->get();
 
             $updatedCarts = $this->cartService->updatedCart($freshCarts);
-            $userSavedCards = SavedCard::where('user_id',$user_id)->select('id','card_alias','last_four','is_default','bin_number')->get();
+            $userSavedCards = SavedCard::where('user_id',$user_id)->select('id','card_alias','last_four','is_default','bin_number','card_type','card_bank')->get();
             $defaultCard=$userSavedCards->where('is_default',1)->first();
             if($defaultCard){
                 $result = $this->iyzicoService->getInstallments($defaultCard->bin_number,$updatedCarts['summary']['total']);
@@ -115,7 +123,7 @@ class PaymentController extends Controller
                 'data'=>CartResource::collection($updatedCarts['carts']),
                 'summary'=>$updatedCarts['summary'],
                 'savedCards'=>$userSavedCards,
-                'installments'=>$installments,
+                'installments'=>$installments ?? null,
                 'address'=>$userAdress ? new AddressResource($userAdress) : null,
                 ]);
       
@@ -131,8 +139,14 @@ class PaymentController extends Controller
         try {
 
             $userAddress = $user->address;
-        
+
+            if(!$userAddress){
+                return response()->json(['message'=>'Sipariş vermek için adres eklemelisiniz.'],400);
+            }
+           
+
             $userCart = Cart::where('user_id',$user->id)->where('is_selected',1)->with('product.advert','product.activeDiscount')->get();
+            
             if($userCart->isEmpty()){
                 return response()->json(
                     [
@@ -154,8 +168,12 @@ class PaymentController extends Controller
             $freshCart = $this->cartService->updatedCart($userCart);
             $freshTotal = $freshCart['summary']['subTotal'];
 
-            if($total !== $freshTotal){
-                return response()->json('SALAMLAR');
+            if (round($total, 2) !== round($freshTotal, 2)){
+                return response()->json([
+                    'status'=>'error',
+                    'key'=>'checkout',
+                    'action'=>'redirect'
+                ]);
                 //return $this->prepareOrder($request);
             }
 
@@ -174,55 +192,66 @@ class PaymentController extends Controller
                 $paidPrice = $this->iyzicoService->getPaidPrice($bin,$paidPrice,$data['installment']);
             }
             
+            DB::beginTransaction();
 
-            $order= Order::create([
+            try {
+                $order= Order::create([
 
-                'user_id'=>$user->id,
-                'ordered_at'=>now(),
-                'users_address_id'=>$user->address->id,
-                'total'=>$paidPrice,
-                'cargo_fee'=>$cartCargoFee,
-                'payment_status'=>'pending',
-                'save_card'=>$data['save_card'] ?? 0
-
-            ]);
-
-            foreach($userCart as $items){
-                OrderItem::create([
-                    'order_id'=>$order->id,
-                    'product_id'=>$items->product_id,
-                    'quantity'=>$items->quantity,
-                    'price'=>$items->price,
-                    'total'=>$items->total
+                    'user_id'=>$user->id,
+                    'ordered_at'=>now(),
+                    'users_address_id'=>$user->address->id,
+                    'total'=>$paidPrice,
+                    'cargo_fee'=>$cartCargoFee,
+                    'payment_status'=>'pending',
+                    'save_card'=>$data['save_card'] ?? 0
+    
                 ]);
-            }
 
-            return [
-                'order'      => $order,
-                'userCart'   => $userCart,
-                'order_id'   => $order->id,
-                'total'      => $total,
-                'paidPrice'  => $paidPrice,
-                'installment'=> $data['installment'] ?? 1,
-                'save_card'  => $data['save_card'] ?? 0,
-                'user'       => [
-                    'id'      => $user->id,
-                    'name'    => $user->name,
-                    'surname' => $user->surname,
-                    'email'   => $user->email,
-                    'address' => 'Türkiye',
-                    'city'    => $user->address->city,
-                ],
-                'items' => $userCart,
-                
-            ];
+                $orderItems=[];
+                foreach($userCart as $item){
+                    $orderItems[]=[
+                        'order_id'   => $order->id,
+                        'product_id' => $item->product_id,
+                        'quantity'   => $item->quantity,
+                        'price'      => $item->price,
+                        'total'      => $item->total,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
+                }
+                OrderItem::insert($orderItems);
+
+                DB::commit();
+
+                return [
+                    'order'      => $order,
+                    'userCart'   => $userCart,
+                    'order_id'   => $order->id,
+                    'total'      => $total,
+                    'paidPrice'  => $paidPrice,
+                    'installment'=> $data['installment'] ?? 1,
+                    'save_card'  => $data['save_card'] ?? 0,
+                    'user'       => [
+                        'id'      => $user->id,
+                        'name'    => $user->name,
+                        'surname' => $user->surname,
+                        'email'   => $user->email,
+                        'address' => 'Türkiye',
+                        'city'    => $user->address->city,
+                    ],
+                    'items' => $userCart,
+                    
+                ];
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            return response()->json(['message' => 'Sipariş oluşturulurken bir hata oluştu: ' . $th->getMessage()], 500);
+        }
+
 
 
 
         }catch (\Exception $e) {
-
             return response()->json(['message'=>$e->getMessage()],500);
-
         }
 
     }
@@ -253,13 +282,14 @@ class PaymentController extends Controller
         $data = $request->validated();
         $user = $request->get('auth_user')->load('address');
         $savedCard = SavedCard::where('user_id',$user->id)->where('id',$data['saved_card_id'])->first();
+
         if(!$savedCard){
             return response()->json(['message'=>'Kayıtlı kart bulunamadı.'],404);
         }   
-        $data['bin'] = $savedCard->bin_number ?? 0;
+        $data['bin_number'] = $savedCard->bin_number ?? 0;
         $orderData = $this->buildOrder($data,$user);
-        if ($orderData instanceof JsonResponse) return $orderData; 
 
+        if ($orderData instanceof JsonResponse) return $orderData; 
 
         $result = $this->iyzicoService->initialize3DSWithToken([
             ...$orderData,
@@ -311,6 +341,7 @@ class PaymentController extends Controller
             'payment_status'        => 'completed',
             'payment_id'    => $result->getPaymentId(),
         ]);
+        $this->stockService->decreaseStock($order);
 
         if($result->getCardToken() && $result->getCardUserKey() && $order->save_card){
             SavedCard::updateOrCreate(
@@ -321,9 +352,10 @@ class PaymentController extends Controller
                 [
                     'card_user_key'=>$result->getCardUserKey(),
                     'card_alias'=>'Kart ' . $result->getLastFourDigits(),
-                    'card_bank'=> '',
-                    'card_family'=>'',
-                    'card_type'=>'',
+                    'card_bank' => $result->getCardAssociation() ?? '',
+                    'card_family' => $result->getCardFamily() ?? '',
+                    'card_type' => $result->getCardType() ?? '',
+                    'bin_number' => $result->getBinNumber() ?? '',
                     'last_four'=>$result->getLastFourDigits() ?? '',
                     'is_default'=>!SavedCard::where('user_id',$order->user_id)->exists()
                 ]

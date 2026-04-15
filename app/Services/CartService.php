@@ -59,7 +59,8 @@ class CartService
         if($noneSelected) $cargoFee=0;
 
         $subTotal = $cartTotal;
-        $cartTotal+=$cargoFee;
+        $cartTotal = round($cartTotal+$cargoFee,2);
+
          return [
         'carts' => $cart,
         'summary'=>[
