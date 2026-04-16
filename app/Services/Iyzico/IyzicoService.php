@@ -12,9 +12,16 @@ use Iyzipay\Model\ThreedsInitialize;
 use Iyzipay\Request\CreatePaymentRequest;
 use Iyzipay\Model\PaymentCard;
 use Iyzipay\Model\ThreedsPayment;
+
 use Iyzipay\Request\CreateThreedsPaymentRequest;
 use Iyzipay\Model\InstallmentInfo;
 use Iyzipay\Request\RetrieveInstallmentInfoRequest;
+use Iyzipay\Model\Card;
+use Iyzipay\Request\DeleteCardRequest;
+
+use Iyzipay\Request\CreateCancelRequest;
+use Iyzipay\Model\Cancel;
+
 
 class IyzicoService
 {
@@ -197,8 +204,7 @@ class IyzicoService
 
     }
 
-    public function initialize3DSWithToken(array $data): ThreedsInitialize
-{
+    public function initialize3DSWithToken(array $data): ThreedsInitialize{
     $request= $this->handleRequests($data);
     
     $paymentCard = new PaymentCard();
@@ -209,7 +215,7 @@ class IyzicoService
    
 
     return ThreedsInitialize::create($request, $this->options);
-}
+    }
 
 
 
@@ -244,7 +250,56 @@ class IyzicoService
                 return (float) $item->getTotalPrice();
             }
         }
+
         return $price;
     }
 
+
+    public function deleteSavedCard(string $cardUserKey, string $cardToken){
+        $request = new DeleteCardRequest();
+        $request->setLocale('tr');
+        $request->setConversationId(uniqid());
+        $request->setCardUserKey($cardUserKey);
+        $request->setCardToken($cardToken);
+
+        return Card::delete($request,$this->options);
+    }
+
+
+
+    public function cancelPayment($paymentId,$ip){
+
+        $request = new CreateCancelRequest();
+        $request->setLocale('tr');
+        $request->setPaymentId($paymentId); 
+        $request->setIp($ip);
+
+        $result = Cancel::create($request, $this->options);
+
+        return $result;
+    }
+
+
+
+
+    public function handleInstallments($result,float $total){
+        $installments=[];
+        
+        if ($result->getStatus() !== 'success' || empty($result->getInstallmentDetails())) {
+            return $installments;
+        }
+
+        foreach($result->getInstallmentDetails() as $detail){
+            foreach($detail->getInstallmentPrices() as $installmentPrice){
+                $installments[]=[
+                    'installment'=> $installmentPrice->getInstallmentNumber(),
+                    'installment_price'=>$installmentPrice->getInstallmentPrice(),
+                    'installment_diff'=>round($installmentPrice->getTotalPrice() - $total,2),
+                    'total_price'=>$installmentPrice->getTotalPrice()
+                ];
+            }
+        }
+
+        return $installments;
+    }
 }

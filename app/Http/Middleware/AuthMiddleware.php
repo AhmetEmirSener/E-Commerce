@@ -52,12 +52,15 @@ class AuthMiddleware
             return response()->json(['message'=>'Oturum süresi doldu, lütfen giriş yapınız'],401);
         }
         try {
+          
             $payload = JWTAuth::setToken($refreshToken)->getPayload();
 
             if($payload->get('type') !== 'refresh'){
                 return response()->json(['message'=>'Geçersiz token.'],401);
             }
 
+            JWTAuth::setToken($refreshToken)->checkOrFail();
+          
             $user = JWTAuth::setToken($refreshToken)->authenticate();
 
             JWTAuth::setToken($refreshToken)->invalidate();
@@ -77,9 +80,8 @@ class AuthMiddleware
             ->withCookie($accessCookie)
             ->withCookie($refreshCookie);
         } catch (\Throwable $th) {
-            dd($th->getMessage());
 
-        return response()->json(['message' => 'Oturum süresi doldu, lütfen giriş yapınızsaas.'], 401);
+            return response()->json(['message' => 'Oturum süresi doldu, lütfen giriş yapınızsaas.'], 401);
         }
     }
 

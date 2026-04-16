@@ -19,7 +19,8 @@ use App\Http\Controllers\CampaignController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\CampaignRulesController;
-
+use App\Http\Controllers\SavedCardController;
+use App\Http\Controllers\InstallmentController;
 
 
 Route::get('/me', function (Request $request) {
@@ -95,7 +96,7 @@ Route::post('/changeSelected',[CartController::class,'changeSelected'])->middlew
 //CART
 
 
-//Check before order
+//PAYMENT 
 Route::post('/prepareOrder',[PaymentController::class,'prepareOrder'])->middleware(AuthMiddleware::class);
 
 // Route::post('/preparePayment',[PaymentController::class,'preparePayment'])->middleware(AuthMiddleware::class);
@@ -107,12 +108,43 @@ Route::get('/payment/result/{token}',[PaymentController::class,'paymentResult'])
 
 Route::post('/stripe/webhook',[StripeWebhookController::class,'handle']);
 
-Route::post('/payment/installment',[PaymentController::class,'getInstallments'])->middleware(AuthMiddleware::class);
 
 
 Route::post('/payment/charge',[PaymentController::class,'payWithCard'])->middleware(AuthMiddleware::class);
 
 Route::post('/payment/charge/savedCard',[PaymentController::class,'payWithSavedCard'])->middleware(AuthMiddleware::class);
+
+
+//PAYMENT 
+
+
+
+//INSTALLMENTS 
+
+Route::post('/payment/installment',[InstallmentController::class,'getInstallments'])->middleware(AuthMiddleware::class);
+
+//INSTALLMENTS 
+
+
+
+
+//SAVED CARD 
+
+Route::delete('/savedCard',[SavedCardController::class,'deleteSavedCard'])->middleware(AuthMiddleware::class);
+
+
+//SAVED CARD 
+
+
+
+
+
+
+
+
+
+
+
 
 
 

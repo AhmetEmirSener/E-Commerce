@@ -22,10 +22,10 @@ class StockService
         if (!$order->relationLoaded('orderItems')) {
             $order->load('orderItems');
         }
-
+        $sortedItems = $order->orderItems->sortBy('product_id');
         try {
             DB::transaction(function() use ($order){
-                foreach($order->orderItems as $item){
+                foreach($sortedItems as $item){
                     $product = Product::lockForUpdate()->find($item->product_id);
 
                     if (!$product) {

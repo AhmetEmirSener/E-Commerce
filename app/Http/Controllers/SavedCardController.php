@@ -4,62 +4,61 @@ namespace App\Http\Controllers;
 
 use App\Models\SavedCard;
 use Illuminate\Http\Request;
+use App\Services\Iyzico\IyzicoService;
+
+use Illuminate\Support\Facades\DB;
+use App\Http\Requests\SavedCards\DeleteSavedCardRequest;
 
 class SavedCardController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
-    {
-        //
+    protected IyzicoService $iyzicoService;
+
+    public function __construct(IyzicoService $iyzicoService){
+
+        $this->iyzicoService= $iyzicoService;
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
-    }
+    public function deleteSavedCard(DeleteSavedCardRequest $request){
+        
+        $data = $request->validated();
+        $user = $request->get('auth_user');
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
-    {
-        //
-    }
+        $savedCards = SavedCard::where('user_id',$user->id)->get();
+        if (!$savedCards) {
+            return response()->json([
+                'message' => 'Kart bulunamadı'
+            ], 404);
+        }
+        $deletedCard = $savedCards->where('id',$data['saved_card_id'])->first();
+        if (!$deletedCard) {
+            return response()->json([
+                'message' => 'Kart bulunamadı'
+            ], 404);
+        }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(SavedCard $savedCard)
-    {
-        //
-    }
+        $result = $this->iyzicoService->deleteSavedCard($deletedCard->card_user_key,$deletedCard->card_token);
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(SavedCard $savedCard)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, SavedCard $savedCard)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(SavedCard $savedCard)
-    {
-        //
+        if ($result->getStatus() !== 'success') {
+            return response()->json([
+                'message' => $result->getErrorMessage()
+            ], 400);
+        }
+        DB::transaction(function () use ($savedCards,$deletedCard){
+            if($deletedCard->is_default && $savedCards->count() > 1){
+                $newDefault = $savedCards->where('id', '!=', $deletedCard->id)
+                ->where('is_default', false)
+                ->first();
+                if ($newDefault) {
+                    $newDefault->update(['is_default' => true]);
+                }
+            }
+    
+            $deletedCard->delete();
+    
+        });
+       
+        return response()->json([
+            'message' => 'Kart başarıyla silindi'
+        ]);
     }
 }
