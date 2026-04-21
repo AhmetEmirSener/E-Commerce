@@ -13,7 +13,9 @@ use Tymon\JWTAuth\Contracts\JWTSubject;
 class User extends Authenticatable implements JWTSubject
 {
     use HasApiTokens, HasFactory, Notifiable; 
-
+    protected $hidden = [
+        'password',
+    ];
     protected $guarded = [];
 
     public function cartItems(){

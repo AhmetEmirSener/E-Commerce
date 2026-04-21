@@ -8,6 +8,10 @@ class Order extends Model
 {
     protected $guarded = [];
 
+    protected $casts = [
+        'shipping_address' => 'array',
+    ];
+
     public function user(){
         return $this->belongsTo(User::class);
     }
@@ -19,4 +23,6 @@ class Order extends Model
     public function payment(){
         return $this->hasOne(Payment::class);
     }
+
+
 }

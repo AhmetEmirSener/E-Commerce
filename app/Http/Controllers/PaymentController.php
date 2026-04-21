@@ -168,15 +168,25 @@ class PaymentController extends Controller
         
     }
 
-    public function createOrder($user,$subTotal, $paidPrice, $cartCargoFee){
+    public function createOrder($user,$subTotal, $paidPrice, $cartCargoFee,$discountTotal,$address){
         $order= Order::create([
 
             'user_id'=>$user->id,
             'ordered_at'=>now(),
-            'users_address_id'=>$user->address->id,
             'subTotal'=>$subTotal,
             'total'=>$paidPrice,
             'cargo_fee'=>$cartCargoFee,
+            'discount_total'=>$discountTotal,
+            'shipping_address'=>[
+                'full_name' => $address->full_name,
+                'phone_number' => $address->phone_number,
+                'address_type'=>$address->address_type,
+                'city' => $address->city,
+                'state' => $address->state,
+                'address_line' => $address->address_line,
+                'postal_code' => $address->postal_code,
+
+            ]
 
         ]);
         return $order;
@@ -206,7 +216,7 @@ class PaymentController extends Controller
             'installment_count'=>$data['installment'] ?? 1,
             'installment_fee'=>$installmentDiff ,
             'status'=> 'pending', 
-            'save_card'=>$data['save_card'] ?? 0
+            'save_card'=>$data['save_card'] ?? 0,
 
         ]);
         return $payment;
@@ -268,7 +278,7 @@ class PaymentController extends Controller
 
             try {
 
-                $order = $this->createOrder($user, $subTotal, $paidPrice, $cartCargoFee);
+                $order = $this->createOrder($user, $subTotal, $paidPrice, $cartCargoFee,$freshCart['summary']['discountTotal'],$userAddress);
 
                 $orderItems = $this->prepareOrderItems($userCart, $order);
                 OrderItem::insert($orderItems);

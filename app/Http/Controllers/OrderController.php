@@ -4,62 +4,56 @@ namespace App\Http\Controllers;
 
 use App\Models\Order;
 use Illuminate\Http\Request;
+use App\Http\Resources\OrderResource;
+use App\Http\Resources\AddressResource;
+
+use App\Http\Resources\OrderWithPaymentDetails;
 
 class OrderController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
-    {
-        //
+    public function orders(Request $request){
+        try {
+            $user = $request->get('auth_user');    
+            $allowedSorts = ['pending','completed','shipped','cancelled'];
+
+            $orders = Order::query()
+            ->where('user_id',$user->id)->with('payment','orderItems.product')->withCount('orderItems')
+            ->when(in_array($request->status,$allowedSorts), function ($query) use ($request){
+                $query->where('status',$request->status);
+            })->latest()->paginate(7);
+           
+            return response()->json([
+                'data'=>OrderResource::collection($orders),
+                'meta' => [
+                    'current_page' => $orders->currentPage(),
+                    'last_page' => $orders->lastPage(),
+                    'total' => $orders->total(),
+                    ]
+            ]);
+
+        } catch (\Throwable $th) {
+            return response()->json(['error'=>$th->getMessage()],500);
+        }
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
-    }
+    public function order(Request $request,$id){
+        try {
+            $user = $request->get('auth_user');    
+            $order = Order::where('id',$id)->with('payment','orderItems.product')->withCount('orderItems')->first();
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
-    {
-        //
-    }
+            if(!$order){
+                return response()->json(['message'=>'Sipariş bulunamadı'],404);
+            }
+            if($order->user_id !== $user->id){
+                return response()->json(['message','Sipariş bulunamadı'],404);
+            }
+           
+            return response()->json([
+                'data'=>new OrderWithPaymentDetails($order),
+            ]);
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(Order $order)
-    {
-        //
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Order $order)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, Order $order)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Order $order)
-    {
-        //
+        } catch (\Throwable $th) {
+            return response()->json(['error'=>$th->getMessage()],500);
+        }
     }
 }

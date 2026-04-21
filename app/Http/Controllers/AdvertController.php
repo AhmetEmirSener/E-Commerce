@@ -55,12 +55,13 @@ class AdvertController extends Controller
             $advert = Advert::where('slug',$slug)->with('product','product.images','product.activeDiscount')->first();
             $category = Category::findOrFail($advert->category_id);
             $path = $this->categoryService->breadcrumb($category);
-
+            $noneStock = $advert->product->stock>0;
             if($advert){
                 return response()->json([
                     'data'=>[
                         'advert'=>new AdvertResource($advert),
-                        'bread_crumb'=>$path
+                        'bread_crumb'=>$path,
+                        'active_stock'=>$noneStock
                     ]
                     
                 ]);
@@ -111,6 +112,7 @@ class AdvertController extends Controller
         }
     }
 
+    
 
 
 }

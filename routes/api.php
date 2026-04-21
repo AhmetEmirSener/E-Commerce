@@ -21,6 +21,8 @@ use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\CampaignRulesController;
 use App\Http\Controllers\SavedCardController;
 use App\Http\Controllers\InstallmentController;
+use App\Http\Controllers\OrderController;
+
 
 
 Route::get('/me', function (Request $request) {
@@ -139,6 +141,11 @@ Route::delete('/savedCard',[SavedCardController::class,'deleteSavedCard'])->midd
 
 
 
+// ORDERS 
+
+Route::get('/orders',[OrderController::class,'orders'])->middleware(AuthMiddleware::class);
+
+Route::get('/order/{id}',[OrderController::class,'order'])->middleware(AuthMiddleware::class);
 
 
 
