@@ -186,7 +186,8 @@ class PaymentController extends Controller
                 'address_line' => $address->address_line,
                 'postal_code' => $address->postal_code,
 
-            ]
+            ],
+            'status'=>'pending'
 
         ]);
         return $order;
@@ -250,7 +251,7 @@ class PaymentController extends Controller
             if ($subTotal <= 0) {
                 return response()->json(['message' => 'Geçersiz toplam tutar.'], 400);
             }
-
+           
 
             $freshCart = $this->cartService->updatedCart($userCart);
             $freshTotal = $freshCart['summary']['subTotal'];
@@ -273,18 +274,22 @@ class PaymentController extends Controller
             $paidPrice       = $pricing['paidPrice'];
             $installmentDiff = $pricing['installmentDiff'];
             // INSTALLMENT 
-
             DB::beginTransaction();
 
             try {
 
                 $order = $this->createOrder($user, $subTotal, $paidPrice, $cartCargoFee,$freshCart['summary']['discountTotal'],$userAddress);
 
-                $orderItems = $this->prepareOrderItems($userCart, $order);
-                OrderItem::insert($orderItems);
+                $orderItems = $order->orderItems()->createMany(
+                    $userCart->map(fn($item) => [
+                        'product_id' => $item->product_id,
+                        'quantity'   => $item->quantity,
+                        'price'      => $item->price,
+                        'total'      => $item->total,
+                    ])->toArray()
+                );
 
                 $payment = $this->createPayment($order, $paidPrice, $data, $installmentDiff ?? 0);
-
                 DB::commit();
 
                 return [
@@ -303,7 +308,7 @@ class PaymentController extends Controller
                         'address' => 'Türkiye',
                         'city'    => $user->address->city,
                     ],
-                    'items' => $userCart,
+                    'items' => $orderItems,
                     
                 ];
         } catch (\Throwable $th) {
@@ -478,7 +483,7 @@ class PaymentController extends Controller
         if ($stockResult !== true) {
             return $stockResult; 
         }
-     
+
 
         $order->payment->update([
             'status'=>'paid',
@@ -487,6 +492,12 @@ class PaymentController extends Controller
             'last_four'          => $result->getLastFourDigits() ?? null,
             'card_bank'          => $result->getCardAssociation() ?? null,
         ]);
+
+        foreach($result->getPaymentItems() as $paymentItem){
+            $order->orderItems()
+                ->where('id', $paymentItem->getItemId())
+                ->update(['payment_transaction_id' => $paymentItem->getPaymentTransactionId()]);
+        }
 
 
         if($result->getCardToken() && $result->getCardUserKey() ){

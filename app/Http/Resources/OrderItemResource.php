@@ -16,13 +16,14 @@ class OrderItemResource extends JsonResource
     {
         $product= $this->product;
         return [
+            'id'=>$this->id,
             'quantity'=>$this->quantity,
             'price'=>$this->price,
             'total'=>$this->total,
             'quantity'=>$this->quantity,
             'name'=>$product->name,
             'image' => $product->image ? asset('storage/' . $product->image) : null,
-
+            
         ];
     }
 }

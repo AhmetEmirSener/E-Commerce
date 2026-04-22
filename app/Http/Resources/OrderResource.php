@@ -40,6 +40,7 @@ class OrderResource extends JsonResource
         
         'payment_status'=>$payment?->status,
         
+        'refund_request_count'=>$this->refund_request_count
 
     ];
     

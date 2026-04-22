@@ -25,4 +25,12 @@ class Order extends Model
     }
 
 
+    public function refundRequest(){
+        return $this->hasMany(RefundRequest::class);
+    }
+
+    public function refund(){
+        return $this->hasMany(Refund::class);
+    }
+
 }

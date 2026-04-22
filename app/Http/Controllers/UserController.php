@@ -15,6 +15,13 @@ use Illuminate\Support\Str;
 use App\Http\Requests\sendResetOtpRequest;
 use App\Http\Requests\resetPasswordRequest;
 
+use App\Http\Requests\RefundOrderRequest;
+
+use App\Models\RefundRequest;
+use App\Models\RefundRequestItem;
+use App\Models\Order;
+use Illuminate\Support\Facades\DB;
+
 
 
 class UserController extends Controller
@@ -248,6 +255,86 @@ class UserController extends Controller
             
         } catch (\Throwable $th) {
             return response()->json(['message'=>$th->getMessage()],500);
+
+        }
+    }
+
+
+    public function refundRequest(RefundOrderRequest $request,$orderId){
+        try {
+            $data = $request->validated();
+            $user = $request->get('auth_user');
+
+            $order = Order::where('id',$orderId)->with('payment','orderItems')->first();
+
+            if($order->user_id !== $user->id){
+                return response()->json(['message'=>'Sipariş bulunamadı']);
+            };
+            if(!in_array($order->status, ['completed', 'shipped'])){
+                return response()->json(['message' => 'Bu sipariş iade edilemez.'], 400);
+            }
+            /*
+            $existingRequest = RefundRequest::where('order_id', $order->id)
+            ->whereNotIn('status', ['rejected'])
+            ->exists();
+
+            if($existingRequest){
+                return response()->json(['message' => 'Bu sipariş için zaten bir iade talebi mevcut.'], 400);
+            }
+            */
+            
+            $orderItems=collect();
+
+
+            foreach($data['order_items'] as $item){
+                $orderItem = $order->orderItems->where('id', $item['item_id'])->first();
+                if(!$orderItem) continue;
+
+                // Daha önce iade edilmiş miktarı çıkar
+                $alreadyRefunded = RefundRequestItem::whereHas('refundRequest', function($q){
+                    $q->whereNotIn('status', ['rejected']);
+                })->where('order_item_id', $orderItem->id)->sum('quantity');
+
+                $availableQuantity = $orderItem->quantity - $alreadyRefunded;
+                if($availableQuantity <= 0) continue;
+
+                $quantity = min($item['quantity'], $availableQuantity);
+
+                $orderItems->push([
+                    'order_item_id' => $orderItem->id,
+                    'quantity'      => $quantity,
+                    'amount'        => $orderItem->price * $quantity,
+                ]);
+            }
+
+        if($orderItems->isEmpty()){
+            return response()->json(['message' => 'İade edilebilir ürün bulunamadı.'], 400);
+        }
+
+        DB::transaction(function() use ($order, $user, $data, $orderItems){
+            $refundRequest = RefundRequest::create([
+                'order_id' => $order->id,
+                'user_id'  => $user->id,
+                'status'   => 'pending',
+                'reason'   => $data['reason'],
+            ]);
+
+            foreach($orderItems as $item){
+                RefundRequestItem::create([
+                    'refund_request_id' => $refundRequest->id,
+                    'order_item_id'     => $item['order_item_id'],
+                    'quantity'          => $item['quantity'],
+                    'amount'            => $item['amount'],
+                ]);
+            }
+        });
+
+        return response()->json(['message' => 'İade talebiniz alındı, inceleme sonrası size bilgi verilecektir.']);
+
+
+            
+        } catch (\Throwable $th) {
+            return response()->json(['message' => $th->getMessage()], 500);
 
         }
     }

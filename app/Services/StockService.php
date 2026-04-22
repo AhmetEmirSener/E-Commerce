@@ -24,7 +24,7 @@ class StockService
         }
         $sortedItems = $order->orderItems->sortBy('product_id');
         try {
-            DB::transaction(function() use ($order){
+            DB::transaction(function() use ($sortedItems){
                 foreach($sortedItems as $item){
                     $product = Product::lockForUpdate()->find($item->product_id);
 
@@ -41,7 +41,7 @@ class StockService
                     $product->decrement('stock',$item->quantity);
 
                     if($newStock <=0){
-                        CleanEmptyStockCartsJob::dispatch($product->id);
+                        CleanEmptyStockCartsJob::dispatch($product->id)->afterCommit();
                     }
                 }
             });
@@ -53,5 +53,38 @@ class StockService
             ]);
             return false;
         }   
+    }
+
+    public function increaseStock(Order $order):bool{
+        if (!$order->relationLoaded('orderItems')) {
+            $order->load('orderItems');
+        }
+        $sortedItems = $order->orderItems->sortBy('product_id');
+
+        try {
+            DB::transaction(function () use ($sortedItems){
+                foreach($sortedItems as $item){
+                    $product = Product::lockForUpdate()->find($item->product_id);
+
+                    if (!$product) {
+                        throw new \Exception("Ürün bulunamadı: {$item->product_id}");
+                    }
+
+
+                    $product->increment('stock',$item->quantity);
+
+
+                }
+
+            });
+
+            return true;
+
+        } catch (\Throwable $th) {
+            Log::critical('Stok arttırma hatası: ' . $th->getMessage(), [
+                'order_id' => $order->id
+            ]);
+            return false;
+        }  
     }
 }

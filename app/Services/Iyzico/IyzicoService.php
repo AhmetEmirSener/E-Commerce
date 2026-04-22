@@ -20,7 +20,10 @@ use Iyzipay\Model\Card;
 use Iyzipay\Request\DeleteCardRequest;
 
 use Iyzipay\Request\CreateCancelRequest;
+use Iyzipay\Request\CreateRefundRequest;
+
 use Iyzipay\Model\Cancel;
+use Iyzipay\Model\Refund;
 
 
 class IyzicoService
@@ -159,7 +162,6 @@ class IyzicoService
     }
 
     public function buildBasketItemsRequest($request,$data){
-     
         $basketItems = [];
         foreach ($data['items'] as $item) {
             $basketItem = new BasketItem();
@@ -170,7 +172,6 @@ class IyzicoService
             $basketItem->setPrice($item['total']);
             $basketItems[] = $basketItem;
         }
-        
         $request->setBasketItems($basketItems);
 
         return $request;
@@ -205,16 +206,16 @@ class IyzicoService
     }
 
     public function initialize3DSWithToken(array $data): ThreedsInitialize{
-    $request= $this->handleRequests($data);
+        $request= $this->handleRequests($data);
+        
+        $paymentCard = new PaymentCard();
+        $paymentCard->setCardUserKey($data['card_user_key']);
+        $paymentCard->setCardToken($data['card_token']);
+        $request->setPaymentCard($paymentCard);
+
     
-    $paymentCard = new PaymentCard();
-    $paymentCard->setCardUserKey($data['card_user_key']);
-    $paymentCard->setCardToken($data['card_token']);
-    $request->setPaymentCard($paymentCard);
 
-   
-
-    return ThreedsInitialize::create($request, $this->options);
+        return ThreedsInitialize::create($request, $this->options);
     }
 
 
@@ -277,6 +278,17 @@ class IyzicoService
         $result = Cancel::create($request, $this->options);
 
         return $result;
+    }
+
+    public function refundPayment(string $paymentTransactionId, float $price, string $ip):Refund{
+        $request = new CreateRefundRequest();
+        $request->setLocale('tr');
+        $request->setPaymentTransactionId($paymentTransactionId); 
+        $request->setPrice($price);
+        $request->setCurrency('TRY');
+        $request->setIp($ip);
+
+        return Refund::create($request,$this->options);
     }
 
 

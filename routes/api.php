@@ -147,12 +147,21 @@ Route::get('/orders',[OrderController::class,'orders'])->middleware(AuthMiddlewa
 
 Route::get('/order/{id}',[OrderController::class,'order'])->middleware(AuthMiddleware::class);
 
+Route::post('/order/cancel/{id}',[OrderController::class,'cancelOrder'])->middleware(AuthMiddleware::class)->middleware('throttle:3,60');
+
+
+Route::post('/order/refund/{id}',[OrderController::class,'refundOrder'])->middleware(AuthMiddleware::class);
 
 
 
+Route::get('/order/refundInfo/{id}',[OrderController::class,'orderRefundInfo'])->middleware(AuthMiddleware::class);
+
+// ORDERS 
 
 
-
+// USER ORDER REFUND REQUEST 
+Route::post('/order/refundRequest/{id}',[UserController::class,'refundRequest'])->middleware(AuthMiddleware::class);
+// USER ORDER REFUND REQUEST 
 
 
 // BRAND 
