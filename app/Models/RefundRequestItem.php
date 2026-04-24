@@ -16,4 +16,8 @@ class RefundRequestItem extends Model
     public function refundRequest(){
         return $this->belongsTo(RefundRequest::class);
     }
+
+    public function orderItem(){
+        return $this->belongsTo(OrderItem::class);
+    }
 }

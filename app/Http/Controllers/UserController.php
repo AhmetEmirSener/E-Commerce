@@ -270,9 +270,10 @@ class UserController extends Controller
             if($order->user_id !== $user->id){
                 return response()->json(['message'=>'Sipariş bulunamadı']);
             };
-            if(!in_array($order->status, ['completed', 'shipped'])){
-                return response()->json(['message' => 'Bu sipariş iade edilemez.'], 400);
+            if(!in_array($order->status, ['completed'])){
+                return response()->json(['message' => 'Sadece teslim edilen ürünler iade edilebilir.'], 400);
             }
+            
             /*
             $existingRequest = RefundRequest::where('order_id', $order->id)
             ->whereNotIn('status', ['rejected'])

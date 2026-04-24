@@ -22,6 +22,7 @@ use App\Http\Controllers\CampaignRulesController;
 use App\Http\Controllers\SavedCardController;
 use App\Http\Controllers\InstallmentController;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\OrderCargoController;
 
 
 
@@ -202,9 +203,12 @@ Route::get('/searchByCategory',[CategoryController::class,'searchByCategory']);
 Route::get('/getCategoryTree/{slug}',[CategoryController::class,'getCategoryTree']);
 
 
+// CATEGORY 
+
+// CARGO
 
 
-
+Route::post('/cargo',[OrderCargoController::class,'createCargo']);
 
 
 
@@ -242,3 +246,9 @@ Route::post('createCampaignExclusives',[CampaignRulesController::class,'createCa
 Route::get('getCampaignDetails/{slug}',[CampaignRulesController::class,'getCampaignDetails']);
 
 Route::get('getCampaignAdverts/{slug}',[CampaignRulesController::class,'getCampaignAdverts']);
+
+
+
+
+Route::post('admin/refund/{id}',[OrderController::class,'refund'])->middleware(AuthMiddleware::class);
+

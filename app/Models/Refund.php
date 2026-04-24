@@ -6,6 +6,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class Refund extends Model
 {
+    protected $guarded = [];
+
+
     public function refundItems(){
         return $this->hasMany(RefundItem::class);
     }

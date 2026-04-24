@@ -4,7 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class RefundOrderRequest extends FormRequest
+class RefundRequestCheckRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -22,14 +22,14 @@ class RefundOrderRequest extends FormRequest
     public function rules(): array
     {
         return [
-        
-            'order_items' => 'required|array|min:1',
-            'reason' => 'required|string|max:500',
+            'refund_request_id'=>'required | exists:refund_requests,id',
 
-            'order_items.*.item_id' => 'required|exists:order_items,id',
-            'order_items.*.quantity' => 'required|integer|min:1',
+            'refund_items' => 'required|array|min:1',
+            
+            'refund_items.*.id' => 'required|exists:refund_request_items,id',
+            'refund_items.*.quantity' => 'required|integer|min:1',
+            'refund_items.*.status' => 'required| string ',
 
-            'all_order'=>'nullable'
         ];
     }
 }

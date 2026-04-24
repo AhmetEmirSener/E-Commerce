@@ -29,8 +29,15 @@ class Order extends Model
         return $this->hasMany(RefundRequest::class);
     }
 
+    
+
     public function refund(){
         return $this->hasMany(Refund::class);
+    }
+
+
+    public function orderCargoDetails(){
+        return $this->hasMany(OrderCargoDetail::class);
     }
 
 }

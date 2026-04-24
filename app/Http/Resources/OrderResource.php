@@ -5,6 +5,8 @@ namespace App\Http\Resources;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use App\Http\Resources\OrderItemResource;
+use App\Http\Resources\RefundRequestResource;
+use App\Http\Resources\OrderCargoDetailResource;
 
 use Carbon\Carbon;
 
@@ -40,7 +42,9 @@ class OrderResource extends JsonResource
         
         'payment_status'=>$payment?->status,
         
-        'refund_request_count'=>$this->refund_request_count
+        'refund_request_count'=>$this->refund_request_count,
+        'refund_request'=>$this->refundRequest ? RefundRequestResource::collection($this->whenLoaded('refundRequest')) : null,
+        'cargo_details'=>$this->orderCargoDetails ? OrderCargoDetailResource::collection($this->whenLoaded('orderCargoDetails')) : null,
 
     ];
     
