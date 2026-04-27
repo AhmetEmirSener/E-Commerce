@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\Review;
+
 use Illuminate\Http\Request;
 use App\Http\Requests\RegisterRequest;
 use Illuminate\Support\Facades\Hash;
@@ -16,11 +18,12 @@ use App\Http\Requests\sendResetOtpRequest;
 use App\Http\Requests\resetPasswordRequest;
 
 use App\Http\Requests\RefundOrderRequest;
-
+use App\Http\Resources\ReviewResource;
 use App\Models\RefundRequest;
 use App\Models\RefundRequestItem;
 use App\Models\Order;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 
 
@@ -265,7 +268,11 @@ class UserController extends Controller
             $data = $request->validated();
             $user = $request->get('auth_user');
 
-            $order = Order::where('id',$orderId)->with('payment','orderItems')->first();
+            $order = Order::where('id',$orderId)->with('payment','orderItems.cargoItem.OrderCargoDetail','orderItems.product','orderCargoDetails.cargoItems')->first();
+            
+            if(!$order){
+                return response()->json(['message' => 'Sipariş bulunamadı.'], 404);
+            }
 
             if($order->user_id !== $user->id){
                 return response()->json(['message'=>'Sipariş bulunamadı']);
@@ -273,6 +280,7 @@ class UserController extends Controller
             if(!in_array($order->status, ['completed'])){
                 return response()->json(['message' => 'Sadece teslim edilen ürünler iade edilebilir.'], 400);
             }
+            
             
             /*
             $existingRequest = RefundRequest::where('order_id', $order->id)
@@ -291,10 +299,18 @@ class UserController extends Controller
                 $orderItem = $order->orderItems->where('id', $item['item_id'])->first();
                 if(!$orderItem) continue;
 
+                $deliveredAt = $orderItem->cargoItem?->orderCargoDetail?->delivered_at;
+                if (!$deliveredAt) {
+                    return response()->json(['message' => 'Ürün henüz teslim edilmemiş.'], 422);
+                }
+                if (Carbon::parse($deliveredAt)->addDays(14)->isPast()) {
+                    return response()->json(['message' => $orderItem->product->name.' ürününün iade süresi dolmuş.'], 422);
+                }
+
                 // Daha önce iade edilmiş miktarı çıkar
-                $alreadyRefunded = RefundRequestItem::whereHas('refundRequest', function($q){
-                    $q->whereNotIn('status', ['rejected']);
-                })->where('order_item_id', $orderItem->id)->sum('quantity');
+                $alreadyRefunded = RefundRequestItem::whereHas('refundRequest',
+              //   function($q){ $q->whereNotIn('status', ['rejected']);}
+                )->where('order_item_id', $orderItem->id)->sum('quantity');
 
                 $availableQuantity = $orderItem->quantity - $alreadyRefunded;
                 if($availableQuantity <= 0) continue;
@@ -340,4 +356,38 @@ class UserController extends Controller
         }
     }
 
+
+
+
+    public function usersReview(Request $request){
+        try {
+            $user = $request->get('auth_user');
+
+            $reviews = Review::where('user_id',$user->id)->where('status','!=','Pasif')->with('advert.product')->get();
+            return ReviewResource::collection($reviews);
+        } catch (\Throwable $th) {
+            return response()->json(['message' => $th->getMessage()], 500);
+
+        }
+    }
+
+    public function deleteReview(Request $request,$id){
+        try {
+            $user = $request->get('auth_user');
+            $review = Review::where('id',$id)->first();
+            if (!$review || $review->user_id !== $user->id || $review->status == 'Pasif'){
+                return response()->json(['message'=>'Yorum bulunamadı'],404);
+            } 
+            
+            $review->status = 'Pasif';
+            $review->save();
+
+            return response()->json(['message'=>'Yorum silindi'],200);
+
+
+        } catch (\Throwable $th) {
+            return response()->json(['message' => $th->getMessage()], 500);
+
+        }
+    }
 }

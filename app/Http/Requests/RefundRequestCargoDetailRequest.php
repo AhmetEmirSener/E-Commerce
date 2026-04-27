@@ -4,7 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class RefundRequestCheckRequest extends FormRequest
+class RefundRequestCargoDetailRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -22,15 +22,9 @@ class RefundRequestCheckRequest extends FormRequest
     public function rules(): array
     {
         return [
-           // 'refund_request_id'=>'required | exists:refund_requests,id',
-
-            'refund_items' => 'required|array|min:1',
+            'cargo_tracking_code'=>'required | string',
+            'cargo_company'=>'required | string',
             
-            'refund_items.*.id' => 'required|exists:refund_request_items,id',
-            'refund_items.*.quantity' => 'required|integer|min:1',
-            'refund_items.*.status' => 'required| string ',
-            
-            'admin_note'=>'nullable | string'
         ];
     }
 }

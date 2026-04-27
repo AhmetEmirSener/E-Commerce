@@ -21,4 +21,8 @@ class RefundRequest extends Model
     public function refundRequestItem(){
         return $this->hasMany(RefundRequestItem::class);
     }
+
+    public function order(){
+        return $this->belongsTo(Order::class);
+    }
 }

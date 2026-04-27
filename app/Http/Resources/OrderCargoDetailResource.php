@@ -23,11 +23,16 @@ class OrderCargoDetailResource extends JsonResource
             'tracking_code'=>$this->tracking_code,
             'tracking_url'=>$this->tracking_url,
             'status'=>$this->status,
-            'shipped_at'=>Carbon::parse($this->shipped_at,)
+            'shipped_at'=>$this->shipped_at ?
+            Carbon::parse($this->shipped_at,)
             ->timezone('Europe/Istanbul')
             ->locale('tr')
-            ->translatedFormat('d F Y '),
-            'delivered_at'=>$this->delivered_at,
+            ->translatedFormat('d F Y ') : null,
+            
+            'delivered_at'=>$this->delivered_at ?Carbon::parse($this->delivered_at)
+            ->timezone('Europe/Istanbul')
+            ->locale('tr')
+            ->translatedFormat('d F Y ') : null,
             'notes'=>$this->notes,
             'items'=>$this->cargoItems ? CargoItemResource::collection($this->whenLoaded('cargoItems')) : null
         ];

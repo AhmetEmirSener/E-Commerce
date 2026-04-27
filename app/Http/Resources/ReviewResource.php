@@ -13,15 +13,26 @@ class ReviewResource extends JsonResource
      * @return array<string, mixed>
      */
     public function toArray(Request $request): array
-    {
+    {       
+   
+
         return[
+            'id'=>$this->id,
             'advert_id'=>$this->advert_id,
             'rating'=>$this->rating,
             'comment'=>$this->comment ?? null,
             'status'=>$this->status,
             'comment_date' => $this->created_at->diffForHumans(),
-            'product_image'=>$this->product->image ?? null,
-            'user'=> new UserResource($this->user)
+            'image' => $this->whenLoaded('advert', function () {
+                return asset('storage/' . $this->advert->product->image);
+            }),           
+            'advert_slug' => $this->whenLoaded('advert', function () {
+                return $this->advert->slug;
+            }),
+            'product_name' => $this->whenLoaded('advert', function () {
+                return $this->advert->product->name;
+            }),
+            'user'=>  new UserResource($this->whenLoaded('user')),
         ];
     }
 }

@@ -12,4 +12,8 @@ class CargoItem extends Model
     public function orderItem(){
         return $this->belongsTo(OrderItem::class);
     }
+
+    public function OrderCargoDetail(){
+        return $this->belongsTo(OrderCargoDetail::class);
+    }
 }

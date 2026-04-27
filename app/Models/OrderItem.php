@@ -15,4 +15,8 @@ class OrderItem extends Model
     public function refundRequestItem(){
         return $this->hasMany(RefundRequestItem::class);
     }
+
+    public function cargoItem(){
+        return $this->hasOne(CargoItem::class);
+    }
 }

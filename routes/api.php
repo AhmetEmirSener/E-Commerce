@@ -62,6 +62,15 @@ Route::post('/login',[UserController::class,'login']);
 Route::post('/logout',[UserController::class,'logout']);
 //USER
 
+// USER REVIEWS 
+
+Route::get('/review',[UserController::class,'usersReview'])->middleware(AuthMiddleware::class);
+
+Route::delete('/review/{id}',[UserController::class,'deleteReview'])->middleware(AuthMiddleware::class);
+
+
+// USER REVIEWS 
+
 // USER RESET PASSWORD
 
 Route::post('/resetPasswordOtp',[UserController::class,'resetPasswordOtp']);
@@ -175,7 +184,7 @@ Route::get('/getBrands',[BrandController::class,'getBrands']);
 
 
 
-// REVIEW 
+// ADVERT  REVIEW 
 
 Route::post('/storeReview',[ReviewController::class,'storeReview']);
 
@@ -187,6 +196,7 @@ Route::get('/reviewPage/{slug}',[ReviewController::class,'reviewPage']);
 Route::get('/filteredReview',[ReviewController::class,'filterReview']);
 
 
+// ADVERT  REVIEW 
 
 
 
@@ -212,6 +222,7 @@ Route::post('/cargo',[OrderCargoController::class,'createCargo']);
 
 
 
+// CARGO
 
 
 // SLIDER 
@@ -249,6 +260,7 @@ Route::get('getCampaignAdverts/{slug}',[CampaignRulesController::class,'getCampa
 
 
 
-
+// ADMIN REFUND 
 Route::post('admin/refund/{id}',[OrderController::class,'refund'])->middleware(AuthMiddleware::class);
 
+Route::post('admin/refundCargo/{id}',[OrderController::class,'refundCargoDetails'])->middleware(AuthMiddleware::class);

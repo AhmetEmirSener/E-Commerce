@@ -19,6 +19,8 @@ use App\Services\StockService;
 use Illuminate\Support\Facades\DB;
 use App\Http\Requests\RefundOrderRequest;
 use App\Http\Requests\RefundRequestCheckRequest;
+use App\Http\Requests\RefundRequestCargoDetailRequest;
+
 
 
 use App\Http\Resources\OrderWithPaymentDetails;
@@ -40,7 +42,7 @@ class OrderController extends Controller
             $allowedSorts = ['pending','completed','shipped','cancelled'];
 
             $orders = Order::query()
-            ->where('user_id',$user->id)->with('payment','orderItems.product')->withCount('orderItems')
+            ->where('user_id',$user->id)->whereNotIn('status',['failed'])->with('payment','orderItems.product')->withCount('orderItems')
             ->when(in_array($request->status,$allowedSorts), function ($query) use ($request){
                 $query->where('status',$request->status);
             })->latest()->paginate(7);
@@ -75,7 +77,7 @@ class OrderController extends Controller
 
             $totalOrderedQty = $order->orderItems->sum('quantity');
             $totalRefundedQty = $order->refundRequest
-            ->whereNotIn('status', ['rejected'])
+            // ->whereNotIn('status', ['rejected'])
             ->flatMap->refundRequestItem //collectiondan çıkarır
             ->sum('quantity');
            
@@ -275,8 +277,8 @@ class OrderController extends Controller
             $data = $request->validated();
 
             $refundRequest = RefundRequest::with('refundRequestItem.orderItem')->findOrFail($refundRequestId);
-
-            throw_unless($refundRequest->status === 'shipped',
+            
+            throw_unless($refundRequest->status === 'received',
             \Exception::class, 'Bu talep teslim alınamaz.');
 
             DB::transaction(function() use ($data,$refundRequest,$request){
@@ -312,7 +314,7 @@ class OrderController extends Controller
                     default                                                => 'partial',
                 };
                 $refundRequest->received_at = now();
-                $refundRequest->admin_note  = $request->admin_note ?? null;
+                $refundRequest->admin_note  = $data['admin_note'] ?? null;
                 $refundRequest->save();
 
                 if ($approvedItems->isEmpty()) return;
@@ -385,8 +387,8 @@ class OrderController extends Controller
             }
             $items = $order->orderItems->map(function($item) {
                 $usedQty = RefundRequestItem::where('order_item_id', $item->id)
-                    ->whereHas('refundRequest', fn($q) =>
-                        $q->whereNotIn('status', ['rejected'])
+                    ->whereHas('refundRequest',
+                      // fn($q) =>    $q->whereNotIn('status', ['rejected'])
                     )->sum('quantity');
     
                 return [
@@ -418,5 +420,30 @@ class OrderController extends Controller
         }
     }
 
+
+    public function refundCargoDetails(RefundRequestCargoDetailRequest $request,$refundRequestId){
+        try {
+            $data = $request->validated();
+
+            if(!$refundRequestId){
+                return response()->json(['message'=>'İade isteği bulunamadı']);
+            }
+
+            $refundRequest = RefundRequest::findOrFail($refundRequestId);
+            $refundRequest->cargo_tracking_code = $data['cargo_tracking_code'];
+            $refundRequest->cargo_company = $data['cargo_company'];
+
+
+            // $refundRequest->shipped_at = now();
+
+            $refundRequest->save();
+
+            return response()->json(['message'=>$refundRequestId.' kargo bilgileri güncellendi'],200);
+
+
+        } catch (\Throwable $th) {
+            return response()->json(['message'=>$th->getMessage()]);
+        }
+    }
 
 }
