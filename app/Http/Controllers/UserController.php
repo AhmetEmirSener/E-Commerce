@@ -18,6 +18,8 @@ use App\Http\Requests\sendResetOtpRequest;
 use App\Http\Requests\resetPasswordRequest;
 
 use App\Http\Requests\RefundOrderRequest;
+use App\Http\Requests\User\UserUpdateInfoRequest;
+
 use App\Http\Resources\ReviewResource;
 use App\Models\RefundRequest;
 use App\Models\RefundRequestItem;
@@ -390,4 +392,116 @@ class UserController extends Controller
 
         }
     }
+
+
+    public function update(UserUpdateInfoRequest $request){
+        $data = array_filter($request->validated(), fn($v) => !is_null($v));
+
+        $user = $request->get('auth_user');
+
+        $user->update($data);
+            
+        return response()->json(['message'=>'Güncelleme Başarılı.'],200);
+    }
+
+
+
+    public function sendOtp(sendResetOtpRequest $request){
+        try {
+            $data = $request->validated();
+            $email =$data['email'];
+            $alreadyHave = User::where('email',$email)->first();
+            $user = $request->get('auth_user');
+            if($alreadyHave){
+                return response()->json(['message'=>'Email adresi zaten kullanılıyor.'], 400);
+            }
+
+            $cacheLimit = 'new_changed_email: '.$user->email;
+            if(Cache::has($cacheLimit)){
+                return response()->json(['message'=>'E-posta adresinizi yakın zamanda değiştirdiniz.'],429);
+            }
+            $rateKey = 'otp_rate:'.$email;
+            $userRateKey = 'user_otp_rate:'.$user->id;
+
+            if(Cache::has($rateKey) || Cache::has($userRateKey)){
+                return response()->json(['message'=>'Çok sık istek. 5 dakika bekleyin.'], 429);
+            }
+
+            Cache::put($rateKey,true,now()->addMinute(5));
+            Cache::put($userRateKey,true,now()->addMinute(5));
+
+            $code = random_int(100000,999999);
+            $token = (string) Str::uuid();
+
+            $cacheKey = 'changeEmail:'.$token;
+
+            Cache::put($cacheKey,[
+                'email'=>$email,
+                'code_hash'=>Hash::make((string)$code),
+                'user_id'=>$user->id,
+                'attempts'=>0
+            ], now()->addMinutes(5));
+
+            Log::info("RESET OTP FOR {$email} is {$code}");
+
+            return response()->json(['message'=>"{$email} adresine doğrulama kodu gönderildi",
+            'token'=>$token
+        ],200);
+
+            
+
+        } catch (\Throwable $th) {
+            return response()->json(['message' => $th->getMessage()], 500);
+
+        }
+
+    }
+
+    public function confirmAndUpdateEmail(Request $request){
+        try {
+            $otp = $request->code;
+            $token = $request->token;
+            $user = $request->get('auth_user');
+
+            $cacheKey = 'changeEmail:'.$token;
+            $data = Cache::get($cacheKey);
+            if(!$data){
+                return response()->json(['message'=>'Doğrulama isteği bulunamadı.'], 400);
+            }
+
+            if($user->id !== $data['user_id']){
+                return response()->json(['message'=>'Doğrulama isteği gerçekleştirilemedi.'], 400);
+            }
+
+            if($data['attempts']>=5){
+                Cache::forget($cacheKey);
+                return response()->json(['message'=>'Çok fazla yanlış deneme. Tekrar istekte bulunun.'],429);
+            }
+            if(!Hash::check((string)$otp, $data['code_hash'])){
+                $data['attempts']++;
+                Cache::put($cacheKey,$data,now()->addMinute(5));
+                return response()->json(['message'=>'Doğrulama kodu yanlış.'], 400);
+            }
+
+            Cache::forget($cacheKey);
+            
+            $user->email = $data['email'];
+            $user->email_verified_at = now();
+            $user->save();
+
+            Cache::put('new_changed_email: '.$data['email'], true, now()->addDays(7));
+
+            return response()->json(['message'=>'Email adresi güncellendi.','new_email'=>$data['email']]);
+
+
+
+        } catch (\Throwable $th) {
+            return response()->json(['message'=>$th->getMessage()],500);
+        }
+    }
+
+
+
+
+
 }

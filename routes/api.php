@@ -27,7 +27,7 @@ use App\Http\Controllers\OrderCargoController;
 
 
 Route::get('/me', function (Request $request) {
-    return $request->user()->only('id','name','surname','role','phone_number');
+    return $request->user()->only('id','name','surname','role','phone_number','email');
 })->middleware(AuthMiddleware::class);
 
 //PRODUCT 
@@ -60,6 +60,15 @@ Route::post('/verifyOtp',[UserOtpController::class,'verifyOtp']);
 Route::post('/login',[UserController::class,'login']);
 
 Route::post('/logout',[UserController::class,'logout']);
+
+Route::put('/user',[UserController::class,'update'])->middleware(AuthMiddleware::class)->middleware('throttle:3,60');
+
+
+Route::post('/email/sendOtp',[UserController::class,'sendOtp'])->middleware(AuthMiddleware::class);
+
+Route::post('/email/verifyOtp',[UserController::class,'confirmAndUpdateEmail'])->middleware(AuthMiddleware::class);
+
+
 //USER
 
 // USER REVIEWS 
