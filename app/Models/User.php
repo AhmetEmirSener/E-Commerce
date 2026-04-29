@@ -26,9 +26,10 @@ class User extends Authenticatable implements JWTSubject
         return $this->hasOne(UserAddress::class)->where('is_default',1);
     }
 
-    public function savedCarts(){
-        return $this->hasMany(SavedCard::class);
+    public function savedCards(){
+        return $this->hasMany(SavedCard::class)->orderBy('is_default','desc');
     }
+    
 
     public function getJWTIdentifier()
     {

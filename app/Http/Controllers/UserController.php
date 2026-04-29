@@ -19,11 +19,16 @@ use App\Http\Requests\resetPasswordRequest;
 
 use App\Http\Requests\RefundOrderRequest;
 use App\Http\Requests\User\UserUpdateInfoRequest;
+use App\Http\Requests\User\UserChangePasswordRequest;
+
 
 use App\Http\Resources\ReviewResource;
 use App\Models\RefundRequest;
 use App\Models\RefundRequestItem;
 use App\Models\Order;
+use App\Models\RefreshToken;
+use App\Models\SavedCard;
+
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
@@ -87,6 +92,14 @@ class UserController extends Controller
                 'type'=>'refresh'
             ])->fromUser($user);
 
+            RefreshToken::create([
+                'user_id'     => $user->id,
+                'token_hash'  => hash('sha256', $refreshToken),
+                'device_info' => $request->userAgent(),
+                'ip_address'  => $request->ip(),
+                'expires_at'  => now()->addDays(30),
+            ]);
+
             $accessCookie = cookie(
                 'access_token',       // cookie adı
                 $accessToken,               // token değeri
@@ -131,7 +144,10 @@ class UserController extends Controller
             $refreshToken = $request->cookie('refresh_token');
 
             if ($accessToken) JWTAuth::setToken($accessToken)->invalidate();
-            if ($refreshToken) JWTAuth::setToken($refreshToken)->invalidate();
+            if ($refreshToken){
+                RefreshToken::where('token_hash',hash('sha256',$refreshToken))->delete();
+                JWTAuth::setToken($refreshToken)->invalidate();
+            }
 
         } catch (\Exception $e) {
         }
@@ -501,7 +517,81 @@ class UserController extends Controller
     }
 
 
+    public function changePassword(UserChangePasswordRequest $request){
+        $data = $request->validated();
+        $user= $request->get('auth_user');
+
+        $userRate = 'user_changed_password: '.$user->id;
+        if(Cache::has($userRate)){
+            return response()->json(['message'=>'24 saat içerisinde 1 kere şifre değiştirebilirsiniz.'],429);   
+        }
+
+        if($data['password_old'] === $data['password_new']){
+            return response()->json(['message'=>'Mevcut şifre ile yeni şifre aynı olamaz.'],400);
+        }
+
+        $currentPassword =$data['password_old'];
+
+        if(!Hash::check($currentPassword,$user->password)){
+            return response()->json(['message'=>'Mevcut şifreniz eksik veya hatalı.'],403);
+        }
+
+        try {
+          
+            $newPassword = Hash::make($data['password_new']);
+            $user->password = $newPassword;
+            $user->save();
+
+            $currentTokenHash = hash('sha256',$request->cookie('refresh_token'));
+            RefreshToken::where('user_id',$user->id)
+            ->where('token_hash','!=',$currentTokenHash)->delete();
 
 
+            $rate = 'user_changed_password: '.$user->id;
+            Cache::put($rate,true,now()->addDays(1));
+            return response()->json(['message'=>'Şifreniz başarıyla güncellendi'],200);
+
+
+
+        } catch (\Throwable $th) {
+            return response()->json(['message' => 'Bir hata oluştu, lütfen tekrar deneyin.'], 500);
+
+        }
+       
+    }
+
+
+    public function savedCards(Request $request){
+        $user = $request->get('auth_user');
+        
+        return response()->json([
+            'data'=>$user->savedCards
+        ]);
+    }
+
+    public function updateToDefault(Request $request,$id){
+        
+        $user = $request->get('auth_user');
+
+        $card = $user->savedCards()->find($id);
+
+        if(!$card){
+            return response()->json(['message'=>'Kayıtlı kart bulunamadı.'],404);
+        }
+        if ($card->is_default) {
+            return response()->json([
+                'message' => 'Bu kart zaten varsayılan kartınız.', 
+            ],400);
+        }
+
+        $user->savedCards()->update(['is_default' => 0]);
+        $card->update(['is_default' => 1]);
+
+        return response()->json(['message'=>'Varsayılan kart güncellendi.','newDefault'=>$card->id]);
+
+        
+
+
+    }
 
 }

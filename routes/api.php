@@ -69,6 +69,13 @@ Route::post('/email/sendOtp',[UserController::class,'sendOtp'])->middleware(Auth
 Route::post('/email/verifyOtp',[UserController::class,'confirmAndUpdateEmail'])->middleware(AuthMiddleware::class);
 
 
+Route::patch('/password',[UserController::class,'changePassword'])->middleware(AuthMiddleware::class);
+
+
+Route::get('/card/saved',[UserController::class,'savedCards'])->middleware(AuthMiddleware::class);
+
+Route::put('/card/saved/{id}',[UserController::class,'updateToDefault'])->middleware(AuthMiddleware::class);
+
 //USER
 
 // USER REVIEWS 
@@ -151,7 +158,7 @@ Route::post('/payment/installment',[InstallmentController::class,'getInstallment
 
 //SAVED CARD 
 
-Route::delete('/savedCard',[SavedCardController::class,'deleteSavedCard'])->middleware(AuthMiddleware::class);
+Route::delete('/card/saved/{id}',[SavedCardController::class,'deleteSavedCard'])->middleware(AuthMiddleware::class);
 
 
 //SAVED CARD 

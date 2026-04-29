@@ -9,6 +9,10 @@ use Tymon\JWTAuth\Facades\JWTAuth;
 use Tymon\JWTAuth\Exceptions\TokenExpiredException;
 use Tymon\JWTAuth\Exceptions\TokenInvalidException;
 use Tymon\JWTAuth\Exceptions\JWTException;
+use Illuminate\Support\Facades\DB;
+
+use App\Models\RefreshToken;
+
 class AuthMiddleware
 {
     /**
@@ -59,17 +63,44 @@ class AuthMiddleware
                 return response()->json(['message'=>'Geçersiz token.'],401);
             }
 
-            JWTAuth::setToken($refreshToken)->checkOrFail();
-          
+            $tokenHash = hash('sha256',$refreshToken);
+            $storedToken = RefreshToken::where('token_hash',$tokenHash)
+            ->where('expires_at','>',now())->first();
+
+            if(!$storedToken){
+                return response()->json(['message' => 'Oturum geçersiz, lütfen tekrar giriş yapınız.'], 401);
+            }
+
+
+           // JWTAuth::setToken($refreshToken)->checkOrFail();
             $user = JWTAuth::setToken($refreshToken)->authenticate();
 
-            JWTAuth::setToken($refreshToken)->invalidate();
+            if (!$user) {
+                return response()->json(['message' => 'Kullanıcı bulunamadı.'], 401);
+            }
 
             $newAccessToken = JWTAuth::fromUser($user);
             $newRefreshToken = JWTAuth::customClaims([
                 'exp'=>now()->addDays(30)->timestamp,
                 'type'=>'refresh'
-            ])->fromUser($user);
+            ])->fromUser($user);    
+
+            DB::transaction(function () use ($user, $newRefreshToken, $storedToken, $request) {
+
+                RefreshToken::create([
+                    'user_id'     => $user->id,
+                    'token_hash'  => hash('sha256', $newRefreshToken),
+                    'device_info' => $storedToken->device_info, 
+                    'ip_address'  => $request->ip(),
+                    'expires_at'  => now()->addDays(30),
+                ]);
+
+                $storedToken->delete();
+            });
+            
+            JWTAuth::setToken($refreshToken)->invalidate();
+
+         
 
             $accessCookie = cookie('access_token', $newAccessToken, 60, '/', null, false, true, false, 'Lax');
             $refreshCookie = cookie('refresh_token', $newRefreshToken, 60 * 24 * 30, '/', null, false, true, false, 'Lax');
