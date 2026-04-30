@@ -31,11 +31,17 @@ use App\Models\SavedCard;
 
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
-
+use App\Services\MailService;
 
 
 class UserController extends Controller
 {
+    protected MailService $mailService;
+
+    public function __construct(MailService $mailService){
+        $this->mailService = $mailService;
+    }
+
     public function register(RegisterRequest $request){
         try {
             $userData = $request->validated();
@@ -458,6 +464,8 @@ class UserController extends Controller
                 'attempts'=>0
             ], now()->addMinutes(5));
 
+            $this->mailService->sendOtp($email,$code,'email-change');
+
             Log::info("RESET OTP FOR {$email} is {$code}");
 
             return response()->json(['message'=>"{$email} adresine doğrulama kodu gönderildi",
@@ -563,7 +571,7 @@ class UserController extends Controller
 
     public function savedCards(Request $request){
         $user = $request->get('auth_user');
-        
+
         return response()->json([
             'data'=>$user->savedCards
         ]);
@@ -592,6 +600,16 @@ class UserController extends Controller
         
 
 
+    }
+
+    public function cartCount(Request $request){
+        $user = $request->get('auth_user');
+        $cartCount=0;
+        if($user->cartItems){
+            $cartCount = $user->cartItems->sum('quantity');
+        }
+        return response()->json(['count'=>$cartCount]);
+    
     }
 
 }

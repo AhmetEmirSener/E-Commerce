@@ -76,6 +76,8 @@ Route::get('/card/saved',[UserController::class,'savedCards'])->middleware(AuthM
 
 Route::put('/card/saved/{id}',[UserController::class,'updateToDefault'])->middleware(AuthMiddleware::class);
 
+Route::get('/cart/count',[UserController::class,'cartCount'])->middleware(AuthMiddleware::class);
+
 //USER
 
 // USER REVIEWS 
