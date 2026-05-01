@@ -11,6 +11,7 @@
         img { -ms-interpolation-mode: bicubic; border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; }
         
         body {
+
             margin: 0;
             padding: 0;
             background-color: #f5f5f5; /* Senin body arkaplanın */
@@ -19,14 +20,17 @@
         }
         
         .email-wrapper {
+            box-sizing: border-box; 
+
             width: 100%;
             background-color: #f5f5f5;
             padding: 40px 20px;
         }
 
         .card-container {
+
             max-width: 480px;
-            margin: 0 auto;
+            margin: 0 auto ;
             background-color: #ffffff;
             border-radius: 10px; /* Senin .card border-radius'un */
             border: 1px solid #e5e7eb; /* Senin genel border rengin */
@@ -146,20 +150,21 @@
             
             <!-- ÜST HEADER (Senin Navbar Tarzın) -->
             <div class="card-header">
-                <a class="logo-text">Yunus<span>Pet</span></a>
+                <a href="{{ url('/') }}" style="text-decoration: none;">
+                    <!-- Logo boyutu e-ticaret standartları için width="120" idealdir -->
+                    <img src="{{ asset('storage/favLast.png') }}" 
+                         alt="YunusPet" 
+                         width="120" 
+                         style="display: block; margin: 0 auto; border: 0; width: 120px; height: auto;">
+                </a>
             </div>
 
             <!-- İÇERİK -->
             <div class="card-body">
                 <!-- DİNAMİK BAŞLIK -->
                 <h1 class="content-title">
-                    @if($title === 'register')
-                    <p>Hesabınızı doğrulamak için</p>
-                    @elseif($title === 'password-reset')
-                    <p>Şifrenizi sıfırlamak için</p>
-                    @elseif($title === 'email-change')
                     <p>Mail adresinizi değiştirmek için</p>
-                    @endif
+
                     
                 </h1>
             
@@ -170,7 +175,7 @@
 
                 <!-- OTP KODU (Aktif input tarzı mavi vurgulu) -->
                 <div class="otp-wrapper">
-                    <p class="otp-code">{{ $otp }}</p>
+                    <p class="otp-code">{{ $otp ?? '123512' }}</p>
                 </div>
 
                 <!-- GÜVENLİK (Senin address-badge / inst-opt.selected tarzın) -->

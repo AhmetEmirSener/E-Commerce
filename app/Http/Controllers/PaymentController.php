@@ -27,6 +27,7 @@ use App\Services\StockService;
 
 use App\Http\Requests\CheckCardInfosRequest;
 use App\Http\Requests\Payment\CheckTokenPaymentRequest;
+use App\Services\MailService;
 
 
 use Illuminate\Http\Request;
@@ -37,13 +38,19 @@ class PaymentController extends Controller
     protected IyzicoService $iyzicoService;
     protected StockService $stockService;
     
-    public function __construct(CartService $cartService, IyzicoService $iyzicoService,StockService $stockService){
+    protected MailService $mailService;
+
+    public function __construct(CartService $cartService,
+     IyzicoService $iyzicoService,StockService $stockService,
+     MailService $mailService
+     ){
         $this->cartService =$cartService;
 
         $this->iyzicoService = $iyzicoService;
 
         $this->stockService = $stockService;
 
+        $this->mailService = $mailService;
 
 
     }
@@ -256,6 +263,7 @@ class PaymentController extends Controller
             $freshCart = $this->cartService->updatedCart($userCart);
             $freshTotal = $freshCart['summary']['subTotal'];
 
+            
             if (round($subTotal, 2) !== round($freshTotal, 2)){
                 return response()->json([
                     'status'=>'error',
@@ -275,15 +283,15 @@ class PaymentController extends Controller
             $installmentDiff = $pricing['installmentDiff'];
             // INSTALLMENT 
             DB::beginTransaction();
-
             try {
 
-                $order = $this->createOrder($user, $subTotal, $paidPrice, $cartCargoFee,$freshCart['summary']['discountTotal'],$userAddress);
+                $order = $this->createOrder($user, $freshCart['summary']['originalTotal'], $paidPrice, $cartCargoFee,$freshCart['summary']['discountTotal'],$userAddress);
 
                 $orderItems = $order->orderItems()->createMany(
                     $userCart->map(fn($item) => [
                         'product_id' => $item->product_id,
                         'quantity'   => $item->quantity,
+                        'original_price'=>$item->product->price,
                         'price'      => $item->price,
                         'total'      => $item->total,
                     ])->toArray()
@@ -454,7 +462,10 @@ class PaymentController extends Controller
         $paymentId = $request->paymentId;
         $conversationId = $request->conversationId;
         
-        $order = Order::where('id', $conversationId)->with('payment')->first();
+        $order = Order::where('id', $conversationId)
+        ->with(['payment', 'user','orderItems.product']) 
+        ->first();
+        
         
         if (!$order) {
             return redirect('http://localhost:4200/payment/result?status=failed');
@@ -485,13 +496,16 @@ class PaymentController extends Controller
         }
 
 
-        $order->payment->update([
-            'status'=>'paid',
-            'provider_payment_id'=>$result->getPaymentId(),
-            'paid_at'=>now(),
-            'last_four'          => $result->getLastFourDigits() ?? null,
-            'card_bank'          => $result->getCardAssociation() ?? null,
-        ]);
+        DB::transaction(function () use ($order, $result) {
+            $order->update(['status' => 'paid']);
+            $order->payment->update([
+                'status'             => 'paid',
+                'provider_payment_id'=> $result->getPaymentId(),
+                'paid_at'            => now(),
+                'last_four'          => $result->getLastFourDigits() ?? null,
+                'card_bank'          => $result->getCardAssociation() ?? null,
+            ]);
+        });
 
         foreach($result->getPaymentItems() as $paymentItem){
             $order->orderItems()
@@ -507,6 +521,7 @@ class PaymentController extends Controller
        
         $order->user->cartItems()->delete();
 
+
         $resultToken = \Str::random(64);
 
         cache()->put('payment_result_' . $resultToken, [
@@ -514,6 +529,7 @@ class PaymentController extends Controller
             'order_id'=>$order->id
         ], now()->addMinutes(60));
 
+        $this->mailService->sendOrderPlace($order->user->email, $order);
 
         return redirect('http://localhost:4200/payment/result?token=' . $resultToken);
     }

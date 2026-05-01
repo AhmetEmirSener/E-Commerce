@@ -39,14 +39,14 @@ class OrderController extends Controller
     public function orders(Request $request){
         try {
             $user = $request->get('auth_user');    
-            $allowedSorts = ['pending','completed','shipped','cancelled'];
+            $allowedSorts = ['paid','completed','shipped','cancelled'];
 
             $orders = Order::query()
-            ->where('user_id',$user->id)->whereNotIn('status',['failed'])->with('payment','orderItems.product')->withCount('orderItems')
+            ->where('user_id',$user->id)->whereNotIn('status',['failed','pending'])->with('payment','orderItems.product')->withCount('orderItems')
             ->when(in_array($request->status,$allowedSorts), function ($query) use ($request){
                 $query->where('status',$request->status);
             })->latest()->paginate(7);
-           
+            
             return response()->json([
                 'data'=>OrderResource::collection($orders),
                 'meta' => [
@@ -70,7 +70,7 @@ class OrderController extends Controller
             ->withSum('refund','amount')
             ->withCount('orderItems')->first();
           // return response()->json($order);
-
+            
             if (!$order || $order->user_id !== $user->id) {
                 return response()->json(['message' => 'Sipariş bulunamadı'], 404);
             }
