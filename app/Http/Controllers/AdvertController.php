@@ -11,6 +11,9 @@ use App\Http\Requests\AdvertRequest;
 use App\Http\Requests\UpdateAdvertRequest;
 
 use App\Http\Resources\AdvertResource;
+use App\Http\Resources\miniAdvertResource;
+
+
 use App\Services\SlugCreateService;
 
 use App\Services\CategoryService;
@@ -110,6 +113,27 @@ class AdvertController extends Controller
         } catch (\Exception $e) {
             return response()->json(['error'=>$e->getMessage()],500);
         }
+    }
+
+
+    public function search($search){
+        
+        $adverts = Advert::with('product')->where(function ($query) use ($search){
+            $query->where('title','LIKE',"%$search%")
+            ->orWhere('description','LIKE',"%$search%");
+        })
+        ->orWhereHas('product', function ($query) use ($search){
+            $query->where('name','LIKE',"%$search%")
+            ->orWhere('features','LIKE',"%$search%");
+        })
+        ->paginate(20);
+
+        return miniAdvertResource::collection($adverts);
+        return response()->json(['data'=>$adverts]);
+       
+
+
+
     }
 
     

@@ -216,6 +216,8 @@ Route::get('/filteredReview',[ReviewController::class,'filterReview']);
 
 // ADVERT  REVIEW 
 
+Route::get('/search/{search}',[AdvertController::class,'search']);
+
 
 
 
@@ -224,7 +226,7 @@ Route::get('/filteredReview',[ReviewController::class,'filterReview']);
 
 Route::post('/createCategory',[CategoryController::class,'storeCategory']);
 
-Route::get('/getCategories',[CategoryController::class,'getCategories']);
+Route::get('/categories',[CategoryController::class,'getCategories']);
 
 Route::get('/searchByCategory',[CategoryController::class,'searchByCategory']);
 
