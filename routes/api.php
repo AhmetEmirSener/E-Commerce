@@ -216,8 +216,9 @@ Route::get('/filteredReview',[ReviewController::class,'filterReview']);
 
 // ADVERT  REVIEW 
 
-Route::get('/search/{search}',[AdvertController::class,'search']);
+Route::get('/search',[AdvertController::class,'search']);
 
+Route::get('/quickSearch',[AdvertController::class,'quickSearch']);
 
 
 

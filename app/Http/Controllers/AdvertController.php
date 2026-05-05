@@ -13,6 +13,7 @@ use App\Http\Requests\UpdateAdvertRequest;
 use App\Http\Resources\AdvertResource;
 use App\Http\Resources\miniAdvertResource;
 
+use Illuminate\Support\Facades\DB;
 
 use App\Services\SlugCreateService;
 
@@ -116,9 +117,13 @@ class AdvertController extends Controller
     }
 
 
-    public function search($search){
-        
-        $adverts = Advert::with('product')->where(function ($query) use ($search){
+    public function search(Request $request){
+        $search = $request->q;
+        $allowedAdvert = ['avg_rating'];
+
+        $allowedProduct = ['price'];
+
+        $adverts = Advert::with('product.activeDiscount')->where(function ($query) use ($search){
             $query->where('title','LIKE',"%$search%")
             ->orWhere('description','LIKE',"%$search%");
         })
@@ -126,16 +131,82 @@ class AdvertController extends Controller
             $query->where('name','LIKE',"%$search%")
             ->orWhere('features','LIKE',"%$search%");
         })
-        ->paginate(20);
+        ->addSelect([
+            'effective_price'=>Product::select(
+                DB::raw('COALESCE(d.discount_price, products.price)')
+            )
+            ->join('adverts as a', 'a.product_id', '=', 'products.id')
+            ->leftJoin('product_discounts as d', function($join){
+                $join->on('d.product_id', '=', 'products.id')
+                ->where('d.is_active', 1);
+            })
+            ->whereColumn('products.id', 'adverts.product_id')
+            ->limit(1)
+        ])
+        ->when(
+            in_array($request->sort_by, $allowedAdvert),
+            fn ($q) => $q->orderBy($request->sort_by, $request->order ?? 'desc')
+        )
+        ->when(
+            in_array($request->sort_by, $allowedProduct),
+            fn ($q) => $q->orderBy('effective_price', $request->order ?? 'asc')
+        )
+        ->when($request->filled('min_price') || $request->filled('max_price'),
+            function($q) use ($request){
 
-        return miniAdvertResource::collection($adverts);
-        return response()->json(['data'=>$adverts]);
+                if($request->filled('min_price') && $request->filled('max_price')){
+                    $q->havingRaw('effective_price BETWEEN ? AND ?',[
+                        $request->min_price,
+                        $request->max_price
+                    ]);             
+                }
+                elseif($request->filled('min_price')){
+                    $q->havingRaw('effective_price >= ?', [$request->min_price]);
+                }elseif($request->filled('max_price')){
+                    $q->havingRaw('effective_price <= ?', [$request->max_price]);
+                }
+            }
+        
+        )
+            
+        ->paginate(12);
+
+        return response()->json([
+            'data'=>miniAdvertResource::collection($adverts),
+            'meta' => [
+                'previous_page'=>$adverts->previousPageUrl(),
+                'current_page' => $adverts->currentPage(),
+                'last_page' => $adverts->lastPage(),
+
+                'total' => $adverts->total(),
+                ]
+        ]);
        
 
 
 
     }
 
+
+    public function quickSearch(Request $request){
+        $search = $request->q;
+
+        $adverts = Advert::with('product.activeDiscount')->where(function ($query) use ($search){
+            $query->where('title','LIKE',"%$search%")
+            ->orWhere('description','LIKE',"%$search%");
+        })
+        ->orWhereHas('product', function ($query) use ($search){
+            $query->where('name','LIKE',"%$search%")
+            ->orWhere('features','LIKE',"%$search%");
+        })
+        ->limit(10)
+        ->get();
+
+        return miniAdvertResource::collection($adverts);
+
+
+        
+    }
     
 
 
