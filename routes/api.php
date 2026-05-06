@@ -23,6 +23,7 @@ use App\Http\Controllers\SavedCardController;
 use App\Http\Controllers\InstallmentController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\OrderCargoController;
+use App\Http\Controllers\SupportRequestController;
 
 
 
@@ -124,6 +125,13 @@ Route::get('/getUsersCart',[CartController::class,'getUsersCart'])->middleware(A
 
 Route::post('/changeSelected',[CartController::class,'changeSelected'])->middleware(AuthMiddleware::class);
 //CART
+
+
+// SUPPORT REQUEST 
+
+Route::post('/supportRequest',[SupportRequestController::class,'createSupport'])->middleware('throttle:5,10');
+
+// SUPPORT REQUEST 
 
 
 //PAYMENT 
