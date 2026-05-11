@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Review;
 use App\Models\Advert;
+use App\Models\OrderItem;
 
 use Illuminate\Http\Request;
 
@@ -33,22 +34,33 @@ class ReviewController extends Controller
     public function storeReview(ReviewRequest $request){
         try {
             $data = $request->validated();
-            $data['user_id']=8; //  simdilik
-            // doğrulama için serviceye geç şimdilik kalsın
-            DB::transaction(function () use ($data) {
-                $advert = Advert::lockForUpdate()->findOrFail($data['advert_id']);
-                Review::create($data);
-    
-                $advert->rating_sum = $advert->rating_sum + $data['rating'];
-                //$advert->increment('rating_sum',$data['rating']);
-                //$advert->increment('total_comments');
-                $advert->total_comments+=1;
-                $advert->avg_rating=$advert->rating_sum / $advert->total_comments;
-                
-                $advert->save();
-            });
+            $user = $request->get('auth_user');
+            
+            $data['user_id']=$user->id;
+
+            $orderItem = OrderItem::whereHas('order',function($q) use($user){
+                $q->where('user_id',$user->id)
+                ->where('status', 'completed'); 
+            })
+            ->where('id',$data['order_item_id'])
+            ->whereDoesntHave('review')
+            ->with('product.advert')
+            ->first();
+
+
+            if (!$orderItem) {
+                return response()->json(['message' => 'Bu ürünü satın almadınız veya zaten review yaptınız.'], 403);
+            }
+
+            $advert = $orderItem->product->advert;
+
+            $data['advert_id'] = $advert->id;
+
+
+            $this->reviewService->store($data,$advert);
+         
         
-            return response()->json('DONE');
+            return response()->json(['message'=>'Yorum oluşturuldu.','rating' => $data['rating']]);
         } catch (\Throwable $th) {
             return response()->json(['error'=>$th->getMessage()],500);
         }

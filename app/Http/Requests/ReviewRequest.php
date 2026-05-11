@@ -23,7 +23,7 @@ class ReviewRequest extends FormRequest
     {
         return [
             'rating'=>'required | integer |min:1|max:5',
-            'advert_id'=>'required | exists:adverts,id',
+            'order_item_id'=>'required | exists:order_items,id',
             'comment'=>'nullable | string| max:750',
             'image'=>'nullable | json',
 
@@ -36,8 +36,10 @@ class ReviewRequest extends FormRequest
             'rating.min'=>'Değerlendirme puanı en az 1 olabilir.',
             'rating.max'=>'Değerlendirme puanı en fazla 5 olabilir.',
             
-            'advert_id.required'=>'Ürün bulunamadı.',
-            'advert_id.exists'=>'Ürnü kayıtlarda yok.',
+            'order_item_id.required'=>'Ürün bulunamadı.',
+            'order_item_id.exists'=>'Ürün kayıtlarda yok.',
+            'order_item_id.unique'=>'Bu ürüne zaten yorum yaptınız.',
+
             'comment.string'=>'Yorum içeriği metin olmalı.',
             'comment.max'=>'Yorum içeriği en fazla 750 harf olabilir.'
         ];

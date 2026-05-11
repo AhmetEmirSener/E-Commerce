@@ -25,7 +25,12 @@ class OrderItemResource extends JsonResource
             'quantity'=>$this->quantity,
             'name'=>$product->name,
             'image' => $product->image ? asset('storage/' . $product->image) : null,
-            
+            'review' => $this->whenLoaded('review', function () {
+                return [
+                    'id' => $this->review->id,
+                    'rating'=>$this->review->rating
+                ];
+            }),
         ];
     }
 }

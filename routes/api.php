@@ -212,7 +212,7 @@ Route::get('/getBrands',[BrandController::class,'getBrands']);
 
 // ADVERT  REVIEW 
 
-Route::post('/storeReview',[ReviewController::class,'storeReview']);
+Route::post('/review',[ReviewController::class,'storeReview'])->middleware(AuthMiddleware::class);;
 
 //Route::get('/getAdvertsReview/{AdvertId}',[ReviewController::class,'getAdvertsReview']);
 

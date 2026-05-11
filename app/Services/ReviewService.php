@@ -8,9 +8,9 @@ use Illuminate\Support\Facades\DB;
 
 class ReviewService
 {
-    public function store(array $data){
-        DB::transaction(function () use ($data) {
-            $advert = Advert::lockForUpdate()->findOrFail($data['advert_id']);
+    public function store(array $data, Advert $advert){
+        DB::transaction(function () use ($data, $advert) {
+            $advert->lockForUpdate();
 
             Review::create($data);
 

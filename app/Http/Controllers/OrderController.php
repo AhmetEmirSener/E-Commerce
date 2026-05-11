@@ -64,7 +64,7 @@ class OrderController extends Controller
     public function order(Request $request,$id){
         try {
             $user = $request->get('auth_user');    
-            $order = Order::where('id',$id)->with('payment','orderItems.product','refundRequest.refundRequestItem.orderItem.product')
+            $order = Order::where('id',$id)->with('payment','orderItems.product','orderItems.review','refundRequest.refundRequestItem.orderItem.product')
             ->with('orderCargoDetails.cargoItems.orderItem.product')
             ->withCount('refundRequest')
             ->withSum('refund','amount')

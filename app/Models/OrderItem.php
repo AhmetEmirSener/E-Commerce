@@ -19,4 +19,12 @@ class OrderItem extends Model
     public function cargoItem(){
         return $this->hasOne(CargoItem::class);
     }
+
+    public function order(){
+        return $this->belongsTo(Order::class);
+    }
+
+    public function review(){
+        return $this->hasOne(Review::class);
+    }
 }

@@ -22,6 +22,10 @@ class User extends Authenticatable implements JWTSubject
         return $this->hasMany(Cart::class)->where('is_selected',1);
     }
 
+    public function orders(){
+        return $this->hasMany(Order::class)->where('status','completed');
+    }
+
     public function address(){
         return $this->hasOne(UserAddress::class)->where('is_default',1);
     }
