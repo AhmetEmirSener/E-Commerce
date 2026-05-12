@@ -194,6 +194,8 @@ class PaymentController extends Controller
                 'postal_code' => $address->postal_code,
 
             ],
+            'pre_info_at'=>now(),
+            'dist_sales_at'=>now(),
             'status'=>'pending'
 
         ]);

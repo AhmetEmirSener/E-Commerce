@@ -31,6 +31,9 @@ class RegisterRequest extends FormRequest
 
             //'email'=>'required|email|unique:users,email',
             'password'=>'required|string',
+            
+            'agreements'=>'required | accepted',
+            'marketing_consent'=>'nullable | boolean',
 
         ];
     }

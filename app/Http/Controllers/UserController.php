@@ -59,7 +59,17 @@ class UserController extends Controller
             $hashed = Hash::make($userData['password']);
             $userData['password']=$hashed;
             $userData['email_verified_at'] = now();
+            $userData['kvkk_accepted_at']= now();
+            $userData['membership_accepted_at']= now();
+
+            if ($request->marketing_consent) {
+                $userData['marketing_consent_at'] = now();
+            }
+
             unset($userData['token']);
+            unset($userData['agreements']); 
+            unset($userData['marketing_consent']);
+
             $user= User::create($userData);
             return response()->json(['message'=>'Kayıt başarılı!'],201);
         } catch (\Exception $e) {
@@ -205,6 +215,8 @@ class UserController extends Controller
             ], now()->addMinutes(15));
 
             Log::info("RESET OTP FOR {$email} is {$code}");
+            
+            $this->mailService->sendOtp($email,$code,'password-reset');
 
             return response()->json(['message'=>'Doğrulama kodu gönderildi.','token'=>$token],200);
 
