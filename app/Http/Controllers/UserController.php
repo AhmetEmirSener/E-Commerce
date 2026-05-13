@@ -138,12 +138,16 @@ class UserController extends Controller
                 false,
                 'Lax');
 
+            $isLoggedCookie = cookie('is_logged', Str::random(16), 60 * 24 * 30, '/', null, false, false, false, 'Lax');
+
+
 
             return response()->json([
                 'message'=>'Giriş başarılı',
             ],200)
             ->withCookie($accessCookie)
-            ->withCookie($refreshCookie);
+            ->withCookie($refreshCookie)
+            ->withCookie($isLoggedCookie);
 
           
 
@@ -169,7 +173,8 @@ class UserController extends Controller
         }
             return response()->json(['message' => 'Çıkış yapıldı'], 200)
                 ->withCookie(cookie()->forget('access_token'))
-                ->withCookie(cookie()->forget('refresh_token'));
+                ->withCookie(cookie()->forget('refresh_token'))
+                ->withCookie(cookie()->forget('is_logged'));
 
               
        

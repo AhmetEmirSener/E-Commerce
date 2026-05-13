@@ -102,14 +102,17 @@ class AuthMiddleware
 
          
 
-            $accessCookie = cookie('access_token', $newAccessToken, 60, '/', null, false, true, false, 'Lax');
+            $accessCookie = cookie('access_token', $newAccessToken, 15, '/', null, false, true, false, 'Lax');
             $refreshCookie = cookie('refresh_token', $newRefreshToken, 60 * 24 * 30, '/', null, false, true, false, 'Lax');
+            $isLoggedCookie = cookie('is_logged',  Str::random(16), 60 * 24 * 30, '/', null, false, false, false, 'Lax');
 
             $request->merge(['auth_user' => $user]);
 
             return $next($request)
             ->withCookie($accessCookie)
-            ->withCookie($refreshCookie);
+            ->withCookie($refreshCookie)
+            ->withCookie($isLoggedCookie);
+
         } catch (\Throwable $th) {
 
             return response()->json(['message' => 'Oturum süresi doldu, lütfen giriş yapınızsaas.'], 401);
