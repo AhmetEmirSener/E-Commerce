@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use App\Http\Resources\ProductResource;
 use App\Http\Resources\ProductImageResource;
+use App\Http\Resources\ReviewResource;
 
 class AdvertResource extends JsonResource
 {
@@ -39,7 +40,11 @@ class AdvertResource extends JsonResource
             'discount_type'=>$discountType,
             'discount_value'=>$discountValue,
             'features'=>$product->features,
-            'images'=> ProductImageResource::collection($product->images) 
+            'images'=> ProductImageResource::collection($product->images) ,
+            
+            'reviews'=> $this->whenLoaded('reviews',function(){
+                return ReviewResource::collection($this->reviews);
+            })
             //'item_ref'=> new ProductResource($this->product)
         ];
     }

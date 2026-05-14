@@ -147,7 +147,14 @@ class CategoryController extends Controller
                         'current_page' => $adverts->currentPage(),
                         'last_page' => $adverts->lastPage(),
 
-                        'total' => $adverts->total(),]
+                        'total' => $adverts->total(),
+                    ],
+                'category'=>[
+                    'name'=>$category->name,
+                    'slug'=>$category->slug
+                ]
+
+                
 
             ]);
         } catch (\Throwable $th) {

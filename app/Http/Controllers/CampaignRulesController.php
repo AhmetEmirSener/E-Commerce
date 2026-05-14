@@ -208,7 +208,7 @@ class CampaignRulesController extends Controller
     }
 
     
-
+    // getCampaignADverts ile birleştirildi belki sonra kullanılır kalsın
     public function getCampaignDetails($slug){
         try {
             $campaign=Campaign::where('slug',$slug)->firstOrFail();
@@ -236,7 +236,7 @@ class CampaignRulesController extends Controller
             ->when(in_array($request->sort_by, $allowedProduct), function($q) use ($request) {
                 $q->orderBy('discount_price', $request->order ?? 'desc');
             })
-            ->paginate(10);
+            ->paginate(5);
 
             return response()->json([
                 'data'=>miniAdvertResource::collection($adverts),
@@ -246,6 +246,7 @@ class CampaignRulesController extends Controller
                     'per_page' => $adverts->perPage(),
                     'total' => $adverts->total(),
                 ],
+                'campaign'=>new CampaignResource($campaign)
             ]);
          
 

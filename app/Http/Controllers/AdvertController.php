@@ -18,16 +18,22 @@ use Illuminate\Support\Facades\DB;
 use App\Services\SlugCreateService;
 
 use App\Services\CategoryService;
+use App\Http\Resources\ReviewStatsResource;
+use App\Services\StatsCountService;
 
 class AdvertController extends Controller
 {
     
     protected SlugCreateService $slugCreateService;
     protected CategoryService $categoryService;
+    protected StatsCountService $statsService;
 
-    public function __construct(SlugCreateService $slugCreateService, CategoryService $categoryService){
+
+    public function __construct(SlugCreateService $slugCreateService, CategoryService $categoryService, StatsCountService $statsService){
         $this->slugCreateService=$slugCreateService;
         $this->categoryService=$categoryService;
+        $this->statsService= $statsService;
+
     }
 
     public function createAdvert(AdvertRequest $request){
@@ -56,8 +62,18 @@ class AdvertController extends Controller
 
     public function getAdvert($slug){
         try {
-            $advert = Advert::where('slug',$slug)->with('product','product.images','product.activeDiscount')->first();
+            $advert = Advert::where('slug',$slug)->with(['product','product.images','product.activeDiscount',
+            'reviews' => function($query) {
+                $query->latest()->take(6);
+            },'reviews.user:id,name,surname'
+            ])->first();
+
+            if(!$advert){
+                return response()->json('Ürün bulunamadı',404);
+            }
             $category = Category::findOrFail($advert->category_id);
+            $stats = $this->statsService->stats($advert->id,\App\Models\Review::class);
+
             $path = $this->categoryService->breadcrumb($category);
             $noneStock = $advert->product->stock>0;
             if($advert){
@@ -65,8 +81,10 @@ class AdvertController extends Controller
                     'data'=>[
                         'advert'=>new AdvertResource($advert),
                         'bread_crumb'=>$path,
-                        'active_stock'=>$noneStock
-                    ]
+                        'active_stock'=>$noneStock,
+                    ],
+                    'stats'=>new ReviewStatsResource($stats),
+
                     
                 ]);
             }

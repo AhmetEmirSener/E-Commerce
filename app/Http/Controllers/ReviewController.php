@@ -77,7 +77,7 @@ class ReviewController extends Controller
             $reviews = $advert->reviews()->where('status','Aktif')->with('user:id,name,surname')->paginate(6);
             
             $stats = $this->statsService->stats($advert->id,\App\Models\Review::class);
-
+            dd('SA');
 
             return response()->json([
                 'data'=>[

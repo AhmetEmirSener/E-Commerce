@@ -23,6 +23,7 @@ class ReviewResource extends JsonResource
             'comment'=>$this->comment ?? null,
             'status'=>$this->status,
             'comment_date' => $this->created_at->diffForHumans(),
+            'comment_date_iso' => $this->created_at->toIso8601String(),
             'image' => $this->whenLoaded('advert', function () {
                 return asset('storage/' . $this->advert->product->image);
             }),           
