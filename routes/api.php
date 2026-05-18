@@ -237,7 +237,7 @@ Route::post('/createCategory',[CategoryController::class,'storeCategory']);
 
 Route::get('/categories',[CategoryController::class,'getCategories']);
 
-Route::get('/searchByCategory',[CategoryController::class,'searchByCategory']);
+Route::get('/searchByCategory/{slug}',[CategoryController::class,'searchByCategory']);
 
 Route::get('/getCategoryTree/{slug}',[CategoryController::class,'getCategoryTree']);
 

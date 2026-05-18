@@ -44,7 +44,8 @@ class miniAdvertResource extends JsonResource
             'original_price'=> $product?->price,
             'discount_price'=> $discountPrice,
             'discount_type'=>$discountType,
-            'discount_value'=>$discountValue
+            'discount_value'=>$discountValue,
+            'active_stock'=>$product->stock >0
 
         ];
     }

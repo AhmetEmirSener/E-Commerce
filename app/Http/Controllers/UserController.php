@@ -119,7 +119,7 @@ class UserController extends Controller
             $accessCookie = cookie(
                 'access_token',       // cookie adı
                 $accessToken,               // token değeri
-                65 ,                    // 1 + jwt tolerans saat geçerli
+                15 ,                    // 1 + jwt tolerans saat geçerli // 65 di 15 e çektim
                 '/',                  // path
                 null,                 // domain
                 false,                // secure

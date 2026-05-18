@@ -4,9 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Advert;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Category extends Model
 {
+    use HasFactory;
+
     protected $guarded = [];
 
     public function getChild(){
@@ -32,7 +35,8 @@ class Category extends Model
             'product_id',    // adverts.product_id
             'id',            // categories.id
             'id'             // products.id
-        )->orderByDesc('adverts.views')->limit(10);
+        )->orderByDesc('adverts.views')
+        ->limit(10);
     }
 
 
@@ -45,7 +49,7 @@ class Category extends Model
         $categoryIds = collect($childIds)->push($this->id);
     
         return Advert::whereHas('product', function ($q) use ($categoryIds) {
-            $q->whereIn('category_id', $categoryIds);
+            $q->whereIn('category_id', $categoryIds)->where('stock','>',0);
         })
         ->selectRaw('adverts.*,(avg_rating*20 + views) as score' )
         ->with('product.activeDiscount')

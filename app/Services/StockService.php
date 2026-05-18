@@ -33,7 +33,7 @@ class StockService
                     }
 
                     if ($product->stock < $item->quantity) {
-                        throw new \Exception("Yetersiz stok: {$product->name}");
+                        throw new \Exception("Yetersiz stok: {$product->id} - {$product->name}  (Mevcut: {$product->stock}, İstenen: {$item->quantity})");
                     }
 
                     $newStock = $product->stock - $item->quantity;
@@ -45,12 +45,20 @@ class StockService
                     }
                 }
             });
+            Log::channel('stock')->info('Stok düşüldü', [
+                'order_id' => $order->id,
+                'items' => $sortedItems->map(fn($item) => [
+                    'product_id' => $item->product_id,
+                    'quantity' => $item->quantity,
+                ])->toArray()
+            ]);
+
             return true;
 
         } catch (\Throwable $th) {
-            Log::critical('Stok düşme hatası: ' . $th->getMessage(), [
-                'order_id' => $order->id
-            ]);
+            Log::channel('stock')->info('Stok düşme hatası: '. $th->getMessage(),[
+                'order_id'=>$order->id,
+            ]);        
             return false;
         }   
     }
@@ -78,12 +86,17 @@ class StockService
 
             });
 
+            Log::channel('stock')->info('Stok artırıldı', [
+                'order_id' => $order->id,
+            ]);
+            
             return true;
 
         } catch (\Throwable $th) {
-            Log::critical('Stok arttırma hatası: ' . $th->getMessage(), [
-                'order_id' => $order->id
-            ]);
+            Log::channel('stock')->info('Stok arttırma hatası: '. $th->getMessage(),[
+                'order_id'=>$order->id,
+            ]); 
+        
             return false;
         }  
     }

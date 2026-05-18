@@ -35,6 +35,20 @@ class SavedCardController extends Controller
         }
 
         try {
+
+            $result = $this->iyzicoService->deleteSavedCard($deletedCard->card_user_key,$deletedCard->card_token);
+
+            if ($result->getStatus() !== 'success') {
+                Log::channel('saved_cards')->error('Iyzico kart silinemedi',
+                [
+                    'user_id'    => $deletedCard->user_id,
+                    'card_token' => $deletedCard->card_token,
+                    'error'      => $result->getErrorMessage(),
+                ]);
+                return response()->json(['message' => 'Kart silinemedi, lütfen tekrar deneyin.'], 400);
+
+            }
+
             DB::transaction(function () use ($deletedCard){
                 if ($deletedCard->is_default) {
                     SavedCard::where('user_id', $deletedCard->user_id)
@@ -46,18 +60,17 @@ class SavedCardController extends Controller
                 $deletedCard->delete();
             });
 
-            $result = $this->iyzicoService->deleteSavedCard($deletedCard->card_user_key,$deletedCard->card_token);
+            Log::channel('saved_cards')->info('Kart silindi', [
+                'user_id'    => $deletedCard->user_id,
+                'card_token' => $deletedCard->card_token,
+            ]);
 
-            if ($result->getStatus() !== 'success') {
-                \Log::error('Iyzico kart silinemedi', [
-                    'user_id'    => $deletedCard->user_id,
-                    'card_token' => $deletedCard->card_token,
-                    'error'      => $result->getErrorMessage(),
-                ]);
-            }
+            return response()->json(['message' => 'Kart başarıyla silindi']);
+
+           
 
         } catch (\Throwable $th) {
-            \Log::error('deleteSavedCard error: ' . $th->getMessage());
+            Log::channel('saved_cards')->error('deleteSavedCard error: ' . $th->getMessage());
             return response()->json(['message' => 'Bir hata oluştu, lütfen tekrar deneyin.'], 500);
         }
 

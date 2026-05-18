@@ -137,21 +137,33 @@ class OrderController extends Controller
                     $order->save();
                     $order->payment->save();
                 });
+
+                Log::channel('payment')->info('Sipariş iptal edilip, Ödeme tutarı iade edildi',[
+                    'order_id' => $orderId,
+                ]);
+
                 return response()->json(['message'=>'İptal işlemi başarılı. Bankanıza bağlı olarak 1-7 iş
                      günü içerisinde iade işlemi tamamlanacaktır.']);   
             } catch (\Exception $e) {
 
-                Log::critical('Iyzico iptali başarılı ancak DB güncellenemedi!', [
+           
+                Log::channel('payment')->error('KRİTİK: Iyzico iptali başarılı ancak DB güncellenemedi!', [
                     'order_id' => $orderId,
+                    'user_id' => $user->id,
+                    'provider_payment_id' => $order->payment->provider_payment_id,
                     'error_message' => $e->getMessage()
                 ]);
+
+              
 
                 return response()->json(['message' => 'İptal işlemi sağlandı ancak sistem güncellenirken hata oluştu.'], 500);
             }
             
 
         } catch (\Throwable $th) {
-            Log::error('Cancel Order General Error: ' . $th->getMessage(), ['order_id' => $orderId]);
+            Log::channel('payment')->error('Cancel Order Genel Hata: ' . $th->getMessage(), [
+                'order_id' => $orderId
+            ]);
             return response()->json(['error' => 'İşlem sırasında beklenmeyen hata oluştu.'], 500);        }
     }
 

@@ -383,6 +383,10 @@ class PaymentController extends Controller
 
     public function handleIyzicoResult($result){
         if($result->getStatus() !== 'success'){
+            Log::channel('payment')->error('Iyzico 3DS başlatılamadı', [
+                'error' => $result->getErrorMessage(),
+                'error_code' => $result->getErrorCode(),
+            ]);
             return response()->json([
                 'message'=>$result->getErrorMessage()
             ],400);
@@ -418,19 +422,28 @@ class PaymentController extends Controller
         $refundStatus = $cancelResult->getStatus() === 'success' ? 'success' : 'failed';
 
         if ($refundStatus === 'success') {
-            \Log::info("Sipariş ID: {$order->id} iade edildi. Payment ID: {$paymentId}");
+            Log::channel('payment')->info("Sipariş ID: {$order->id} iade edildi. Payment ID: {$paymentId}");
         } else {
-            \Log::critical("ACİL! Sipariş ID: {$order->id} İADE EDİLEMEDİ! Hata: " . $cancelResult->getErrorMessage());
+            Log::channel('payment')->error("KRİTİK! Sipariş ID: {$order->id} İADE EDİLEMEDİ!", [
+                'order_id' => $order->id,
+                'payment_id' => $paymentId,
+                'error' => $cancelResult->getErrorMessage()
+            ]);
+
         }
 
-        $order->update(['status' => 'cancelled']);
-        if ($order->payment) {
+        if ($refundStatus === 'success') {
+            $order->update(['status' => 'cancelled']);
             $order->payment->update(['status' => 'cancelled_out_of_stock']);
+        }else{
+            $order->update(['status' => 'payment_issue']);
+            $order->payment->update(['status' => 'refund_failed']);
         }
 
         return redirect("http://localhost:4200/payment/result?status=failed_out_of_stock&refund_status={$refundStatus}");
         }
     }
+
     private function saveUserCard($result,Order $order){
         $savedCard = SavedCard::updateOrCreate(
             [
@@ -470,18 +483,32 @@ class PaymentController extends Controller
         
         
         if (!$order) {
+            Log::channel('payment')->error('Callback: Sipariş bulunamadı', [
+                'conversation_id' => $conversationId,
+                'payment_id' => $paymentId,
+            ]);
+
             return redirect('http://localhost:4200/payment/result?status=failed');
         }
 
         if ($order->payment && $order->payment->status === 'paid') {
-            
+            Log::channel('payment')->warning('Callback: Sipariş zaten ödendi', [
+                'order_id' => $order->id,
+                'user_id' => $order->user_id,
+            ]);
+
             return redirect('http://localhost:4200/payment/result?status=success_already_paid'); 
         }
         
      
 
         if ($status !== 'success' || $mdStatus != 1) {
-
+            Log::channel('payment')->warning('Callback: 3DS doğrulama başarısız', [
+                'order_id' => $order->id,
+                'user_id' => $order->user_id,
+                'md_status' => $mdStatus,
+                'md_error' => $request->mdErrorMsg,
+            ]);
             return $this->handlePaymentFailure($order,$request->mdErrorMsg ?? '3D Secure doğrulama işlemi başarısız oldu.','failed_3ds');
         }
 
@@ -489,6 +516,13 @@ class PaymentController extends Controller
 
         if ($result->getStatus() !== 'success') {
 
+            Log::channel('payment')->error('Callback: 3DS tamamlama başarısız', [
+                'order_id' => $order->id,
+                'user_id' => $order->user_id,
+                'error' => $result->getErrorMessage(),
+                'error_code' => $result->getErrorCode(),
+            ]);
+            
             return $this->handlePaymentFailure($order,$result->getErrorMessage() ?? 'Ödeme işlemi reddedildi.','failed');
         }
 
@@ -530,6 +564,13 @@ class PaymentController extends Controller
             'status'=>'success',
             'order_id'=>$order->id
         ], now()->addMinutes(60));
+
+        Log::channel('payment')->info('Ödeme başarılı', [
+            'order_id' => $order->id,
+            'user_id' => $order->user_id,
+            'provider_payment_id' => $result->getPaymentId(),
+            'amount' => $order->payment->amount ?? null,
+        ]);
 
         $this->mailService->sendOrderPlace($order->user->email, $order);
 

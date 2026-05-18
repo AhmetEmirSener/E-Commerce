@@ -127,6 +127,35 @@ return [
             'path' => storage_path('logs/laravel.log'),
         ],
 
+
+        'payment' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/payment.log'),
+            'level' => 'debug',
+            'days' => 30,
+        ],
+
+        'order' => [
+        'driver' => 'daily',
+        'path' => storage_path('logs/order.log'),
+        'level' => 'debug',
+        'days' => 30,
+        ],
+
+        'saved_cards' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/saved_cards.log'),
+            'level' => 'debug',
+            'days' => 30,
+        ],
+
+        'stock' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/stock.log'),
+            'level' => 'debug',
+            'days' => 30,
+        ],
+
     ],
 
 ];

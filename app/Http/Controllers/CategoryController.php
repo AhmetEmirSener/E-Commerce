@@ -88,11 +88,12 @@ class CategoryController extends Controller
         }
     }
 
-    public function searchByCategory(Request $request){
+    public function searchByCategory(Request $request,$slug){
         try {
-            $category = Category::where('slug',$request->slug)->first();
-            if(!$category)return response()->json(['message'=>'Kategori bulunamadı'],404);
             
+            $category = Category::where('slug',$slug)->first();
+            if(!$category)return response()->json(['message'=>'Kategori bulunamadı'],404);
+
             $childIds= $category->getAllChildrenIds();
             $categoryIds = collect($childIds)->push($category->id);
 
@@ -106,6 +107,11 @@ class CategoryController extends Controller
             ->whereHas('product',function ($q) use ($categoryIds){
                 $q->whereIn('category_id',$categoryIds);
             })
+            ->orderBy(
+                Product::selectRaw('stock > 0')
+                    ->whereColumn('products.id', 'adverts.product_id'),
+                'desc' // 1 (stokta var) olanlar başa, 0 (none stock) olanlar sona gider
+            )
             ->when(
                 in_array($request->sort_by, $allowedAdvert),
                 fn ($q) => $q->orderBy($request->sort_by, $request->order ?? 'desc')
@@ -137,6 +143,7 @@ class CategoryController extends Controller
                     });
                 }
             )
+            
             ->paginate(12);
 
 

@@ -104,7 +104,6 @@ class CampaignRulesController extends Controller
             $product=$advert->product;
             if (!$product) return response()->json(['message' => 'Ürün bulunamadı'], 404);
 
-
             $otherCampaignDiscount = ProductDiscount::where('product_id', $product->id)
             ->where('campaign_id', '!=', $campaign->id)
             ->where('is_active', true)

@@ -10,6 +10,7 @@ use Tymon\JWTAuth\Exceptions\TokenExpiredException;
 use Tymon\JWTAuth\Exceptions\TokenInvalidException;
 use Tymon\JWTAuth\Exceptions\JWTException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 use App\Models\RefreshToken;
 
@@ -56,7 +57,7 @@ class AuthMiddleware
             return response()->json(['message'=>'Oturum süresi doldu, lütfen giriş yapınız'],401);
         }
         try {
-          
+
             $payload = JWTAuth::setToken($refreshToken)->getPayload();
 
             if($payload->get('type') !== 'refresh'){
@@ -115,7 +116,8 @@ class AuthMiddleware
 
         } catch (\Throwable $th) {
 
-            return response()->json(['message' => 'Oturum süresi doldu, lütfen giriş yapınızsaas.'], 401);
+            \Log::error('Refresh token hatası: ' . $th->getMessage());
+            return response()->json(['message' => 'Oturum süresi doldu: ' . $th->getMessage()], 401);
         }
     }
 
