@@ -13,4 +13,8 @@ class ProductImage extends Model
         'sort',
         'is_main'
     ];
+
+    public function product() {
+        return $this->belongsTo(Product::class);
+    }
 }
