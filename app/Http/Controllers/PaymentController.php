@@ -357,6 +357,7 @@ class PaymentController extends Controller
 
     }
 
+
     public function payWithSavedCard(CheckTokenPaymentRequest $request){
         $data = $request->validated();
         $user = $request->get('auth_user')->load('address');
@@ -396,6 +397,41 @@ class PaymentController extends Controller
             'html_content'=>$result->getHtmlContent()
         ]);
     }
+
+    public function payment(Request $request){
+        $data = ['installment'=>1,'save_card'=>0];
+        $user = $request->get('auth_user')->load('address');
+
+        $orderData = $this->buildOrder($data,$user);
+        if ($orderData instanceof JsonResponse) return $orderData; 
+
+        $result = $this->iyzicoService->initializeCheckoutForm([
+            ...$orderData,
+            'ip'=> $request->ip(),
+
+        ]);
+
+
+        if ($result->getStatus() !== 'success') {
+        Log::channel('payment')->error('Iyzico Form Başlatılamadı', [
+            'order_id' => $orderData['order_id'],
+            'error' => $result->getErrorMessage()
+        ]);
+        
+        return response()->json([
+            'status' => 'error',
+            'message' => $result->getErrorMessage() ?? 'Ödeme formu yüklenirken bir hata oluştu.'
+        ], 400);
+        }
+        
+        return response()->json([
+            'status' => 'success',
+            'token' => $result->getToken(),
+            'checkoutFormContent' => $result->getCheckoutFormContent() // 
+        ]);
+
+    }
+
 
 
 
@@ -470,112 +506,89 @@ class PaymentController extends Controller
 }
 
 
-    public function callback(Request $request){
-
-        $status = $request->status;
-        $mdStatus = $request->mdStatus;
-        $paymentId = $request->paymentId;
-        $conversationId = $request->conversationId;
-        
-        $order = Order::where('id', $conversationId)
-        ->with(['payment', 'user','orderItems.product']) 
-        ->first();
-        
-        
-        if (!$order) {
-            Log::channel('payment')->error('Callback: Sipariş bulunamadı', [
-                'conversation_id' => $conversationId,
-                'payment_id' => $paymentId,
-            ]);
-
-            return redirect('http://localhost:4200/payment/result?status=failed');
-        }
-
-        if ($order->payment && $order->payment->status === 'paid') {
-            Log::channel('payment')->warning('Callback: Sipariş zaten ödendi', [
-                'order_id' => $order->id,
-                'user_id' => $order->user_id,
-            ]);
-
-            return redirect('http://localhost:4200/payment/result?status=success_already_paid'); 
-        }
-        
-     
-
-        if ($status !== 'success' || $mdStatus != 1) {
-            Log::channel('payment')->warning('Callback: 3DS doğrulama başarısız', [
-                'order_id' => $order->id,
-                'user_id' => $order->user_id,
-                'md_status' => $mdStatus,
-                'md_error' => $request->mdErrorMsg,
-            ]);
-            return $this->handlePaymentFailure($order,$request->mdErrorMsg ?? '3D Secure doğrulama işlemi başarısız oldu.','failed_3ds');
-        }
-
-        $result = $this->iyzicoService->complete3DS($paymentId, $conversationId);
-
-        if ($result->getStatus() !== 'success') {
-
-            Log::channel('payment')->error('Callback: 3DS tamamlama başarısız', [
-                'order_id' => $order->id,
-                'user_id' => $order->user_id,
-                'error' => $result->getErrorMessage(),
-                'error_code' => $result->getErrorCode(),
-            ]);
-            
-            return $this->handlePaymentFailure($order,$result->getErrorMessage() ?? 'Ödeme işlemi reddedildi.','failed');
-        }
-
-        $stockResult = $this->processStockOrRefund($order,$paymentId,$request->ip());
-        if ($stockResult !== true) {
-            return $stockResult; 
-        }
-
-
-        DB::transaction(function () use ($order, $result) {
-            $order->update(['status' => 'paid']);
-            $order->payment->update([
-                'status'             => 'paid',
-                'provider_payment_id'=> $result->getPaymentId(),
-                'paid_at'            => now(),
-                'last_four'          => $result->getLastFourDigits() ?? null,
-                'card_bank'          => $result->getCardAssociation() ?? null,
-            ]);
-        });
-
-        foreach($result->getPaymentItems() as $paymentItem){
-            $order->orderItems()
-                ->where('id', $paymentItem->getItemId())
-                ->update(['payment_transaction_id' => $paymentItem->getPaymentTransactionId()]);
-        }
-
-
-        if($result->getCardToken() && $result->getCardUserKey() ){
-            $this->saveUserCard($result,$order);
-        }
-
-       
-        $order->user->cartItems()->delete();
-
-
-        $resultToken = \Str::random(64);
-
-        cache()->put('payment_result_' . $resultToken, [
-            'status'=>'success',
-            'order_id'=>$order->id
-        ], now()->addMinutes(60));
-
-        Log::channel('payment')->info('Ödeme başarılı', [
-            'order_id' => $order->id,
-            'user_id' => $order->user_id,
-            'provider_payment_id' => $result->getPaymentId(),
-            'amount' => $order->payment->amount ?? null,
-        ]);
-
-        $this->mailService->sendOrderPlace($order->user->email, $order);
-
-        return redirect('http://localhost:4200/payment/result?token=' . $resultToken);
+   public function callback(Request $request){
+    $token = $request->token;
+    
+    if(!$token){
+        return redirect('http://localhost:4200/payment/result?status=failed');
     }
+
+    $result = $this->iyzicoService->retrieveCheckoutForm($token);
+
+    if ($result->getStatus() !== 'success' || strtoupper($result->getPaymentStatus() ?? '') !== 'SUCCESS') {
+        Log::channel('payment')->error('Checkout form tamamlama başarısız', [
+            'error'      => $result->getErrorMessage(),
+            'error_code' => $result->getErrorCode(),
+        ]);
+        return redirect('http://localhost:4200/payment/result?status=failed');
+    }
+
+    // conversationId gelmiyorsa basketId'den al
+    $orderId = $result->getConversationId() ?? $result->getBasketId();
+
+    $order = Order::where('id', $orderId)
+        ->with(['payment', 'user', 'orderItems.product'])
+        ->first();
+
+    if (!$order) {
+        Log::channel('payment')->error('Callback: Sipariş bulunamadı', [
+            'order_id' => $orderId,
+        ]);
+        return redirect('http://localhost:4200/payment/result?status=failed');
+    }
+
+    if ($order->payment && $order->payment->status === 'paid') {
+        Log::channel('payment')->warning('Callback: Sipariş zaten ödendi', [
+            'order_id' => $order->id,
+        ]);
+        return redirect('http://localhost:4200/payment/result?status=success_already_paid');
+    }
+
+    $stockResult = $this->processStockOrRefund($order, $result->getPaymentId(), $request->ip());
+    if ($stockResult !== true) {
+        return $stockResult;
+    }
+
+    DB::transaction(function () use ($order, $result) {
+        $order->update(['status' => 'paid']);
+        $order->payment->update([
+            'status'              => 'paid',
+            'provider_payment_id' => $result->getPaymentId(),
+            'paid_at'             => now(),
+            'last_four'           => $result->getLastFourDigits() ?? null,
+            'card_bank'           => $result->getCardAssociation() ?? null,
+        ]);
+    });
+
+    foreach ($result->getPaymentItems() as $paymentItem) {
+        $order->orderItems()
+            ->where('id', $paymentItem->getItemId())
+            ->update(['payment_transaction_id' => $paymentItem->getPaymentTransactionId()]);
+    }
+
+    if ($result->getCardToken() && $result->getCardUserKey()) {
+        $this->saveUserCard($result, $order);
+    }
+
+    $order->user->cartItems()->delete();
+
+    $resultToken = \Str::random(64);
+    cache()->put('payment_result_' . $resultToken, [
+        'status'   => 'success',
+        'order_id' => $order->id,
+    ], now()->addMinutes(60));
+
+    Log::channel('payment')->info('Ödeme başarılı', [
+        'order_id'            => $order->id,
+        'user_id'             => $order->user_id,
+        'provider_payment_id' => $result->getPaymentId(),
+        'amount'              => $order->payment->amount ?? null,
+    ]);
+
+    $this->mailService->sendOrderPlace($order->user->email, $order);
+
+    return redirect('http://e-commerce.test:4200/payment/result?token=' . $resultToken);
+}
 
 
  

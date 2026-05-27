@@ -24,6 +24,7 @@ use Iyzipay\Request\CreateRefundRequest;
 
 use Iyzipay\Model\Cancel;
 use Iyzipay\Model\Refund;
+use Illuminate\Support\Facades\Log;
 
 
 class IyzicoService
@@ -58,7 +59,8 @@ class IyzicoService
         $request->setCurrency('TRY');
         $request->setBasketId((string) $data['order_id']);
         $request->setPaymentGroup('PRODUCT');
-        $request->setCallbackUrl(config('app.url') . '/api/payment/callback');
+        $request->setCallbackUrl('http://127.0.0.1:8000/api/payment/callback');
+
         $request->setEnabledInstallments([1, 2, 3, 6, 9, 12]);
 
         $buyer = new Buyer();
@@ -99,10 +101,28 @@ class IyzicoService
         }
         $request->setBasketItems($basketItems);
 
+        Log::info('Iyzico fiyat kontrolü', [
+            'price'     => $data['total'],
+            'paidPrice' => $data['total'],
+            'items'     => collect($data['items'])->map(fn($i) => $i['total'])->toArray(),
+            'items_sum' => collect($data['items'])->sum('total'),
+        ]);
+
         return CheckoutFormInitialize::create($request, $this->options);
 
     }   
 
+
+    public function retrieveCheckoutForm(string $token, string $conversationId= '')
+    {
+        $request = new \Iyzipay\Request\RetrieveCheckoutFormRequest();
+        $request->setLocale(\Iyzipay\Model\Locale::TR);
+    if($conversationId) {
+            $request->setConversationId($conversationId);
+        }        $request->setToken($token);
+
+        return \Iyzipay\Model\CheckoutForm::retrieve($request, $this->options);
+    }
 
 
     public function buildBaseRequest($data){

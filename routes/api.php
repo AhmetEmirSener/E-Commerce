@@ -152,6 +152,8 @@ Route::post('/payment/charge',[PaymentController::class,'payWithCard'])->middlew
 
 Route::post('/payment/charge/savedCard',[PaymentController::class,'payWithSavedCard'])->middleware(AuthMiddleware::class);
 
+Route::post('/payment/charge/form',[PaymentController::class,'payment'])->middleware(AuthMiddleware::class);
+
 
 //PAYMENT 
 

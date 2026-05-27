@@ -8,6 +8,7 @@
     "require": {
         "php": "^8.2",
         "filament/filament": "^3.0",
+        "iyzico/iyzipay-php": "^2.0",
         "laravel/cashier": "^16.0",
         "laravel/framework": "^12.0",
         "laravel/sanctum": "^4.0",
