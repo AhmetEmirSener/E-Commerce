@@ -23,11 +23,15 @@ class OrderStatsWidget extends BaseWidget
 
         // 2. Bugünün Cirosu (Sadece iptal edilmemiş siparişlerin toplamı)
         $todayCiro = Order::whereBetween('ordered_at', [$todayStart, $todayEnd])
-            ->where('status', '!=', 'İptal Edildi')
+            ->whereNotIn('status', ['cancelled','pending'])
+            
             ->sum('total');
 
         // 3. Bugünün Sipariş Sayısı
-        $todayOrderCount = Order::whereBetween('ordered_at', [$todayStart, $todayEnd])->count();
+        $todayOrderCount = Order::whereBetween('ordered_at', [$todayStart, $todayEnd])
+        ->where('status', '!=','pending')
+
+        ->count();
 
         // 4. Bekleyen / Aksiyon Alınması Gereken Siparişler
         $pendingOrders = Order::whereIn('status', ['Sipariş alındı.', 'Hazırlanıyor'])->count();
