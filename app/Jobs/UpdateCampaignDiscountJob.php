@@ -36,7 +36,9 @@ class UpdateCampaignDiscountJob implements ShouldQueue
         if(!$discount) return;
 
         $newPrice = $discountService->calculateDiscount(
-            $this->product->price,$discount->campaign
+            $this->product->price,
+            //$discount->campaign
+            $discount
         );
         $discount->update(['discount_price'=>$newPrice]);
     }
