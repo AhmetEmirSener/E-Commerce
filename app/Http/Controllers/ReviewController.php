@@ -52,13 +52,14 @@ class ReviewController extends Controller
                 return response()->json(['message' => 'Bu ürünü satın almadınız veya zaten review yaptınız.'], 403);
             }
 
+            /*
+            // admin onaylayınca kullanılacak.
             $advert = $orderItem->product->advert;
 
             $data['advert_id'] = $advert->id;
 
-
             $this->reviewService->store($data,$advert);
-         
+            */
         
             return response()->json(['message'=>'Yorum oluşturuldu.','rating' => $data['rating']]);
         } catch (\Throwable $th) {
