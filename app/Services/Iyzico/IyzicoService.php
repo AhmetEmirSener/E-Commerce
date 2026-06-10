@@ -55,7 +55,7 @@ class IyzicoService
         $request->setlocale('tr');
         $request->setConversationId((string) $data['order_id']);
         $request->setPrice($data['total']);
-        $request->setPaidPrice($data['total']);
+        $request->setPaidPrice($data['paidPrice']);
         $request->setCurrency('TRY');
         $request->setBasketId((string) $data['order_id']);
         $request->setPaymentGroup('PRODUCT');
