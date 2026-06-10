@@ -6,5 +6,5 @@ use Illuminate\Database\Eloquent\Model;
 
 class CargoFee extends Model
 {
-    //
+    protected $guarded = [];
 }

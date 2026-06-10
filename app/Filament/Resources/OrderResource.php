@@ -106,34 +106,34 @@ class OrderResource extends Resource
                         Tabs\Tab::make('Adres')
                             ->icon('heroicon-o-map-pin')
                             ->schema([
-                          Forms\Components\Textarea::make('shipping_address')
-                            ->label('Teslimat ve Fatura Adresi')
-                            ->required()
-                            ->columnSpanFull()
-                            ->rows(4)
-                            // Veritabanındaki array/json yapısını okunaklı düz metne çeviriyoruz kanka:
-                            ->formatStateUsing(function ($state) {
-                                if (!$state) return '';
-                                
-                                // Eğer veri veritabanından JSON string olarak geliyorsa array'e çeviriyoruz
-                                $address = is_string($state) ? json_decode($state, true) : $state;
+                     Forms\Components\Placeholder::make('shipping_address_display') // İsmini değiştirdik ki shipping_address sütununa yazmaya çalışmasın mq!
+    ->label('Teslimat ve Fatura Adresi')
+    ->columnSpanFull()
+    ->content(function ($record) { // Placeholder'da formatStateUsing yerine 'content' kullanılır kanka
+        if (!$record || !$record->shipping_address) return 'Adres bilgisi bulunamadı.';
+        
+        $state = $record->shipping_address;
+        
+        // Eğer veri veritabanından JSON string olarak geliyorsa array'e çeviriyoruz
+        $address = is_string($state) ? json_decode($state, true) : $state;
 
-                                if (!is_array($address)) return $state;
+        if (!is_array($address)) return $state;
 
-                                // Senin gönderdiğin tam key yapılarına göre eşliyoruz:
-                                $fullName = $address['full_name'] ?? '';
-                                $phone = $address['phone_number'] ?? '';
-                                $type = $address['address_type'] ?? 'Ev';
-                                $line = $address['address_line'] ?? '';
-                                $district = $address['state'] ?? ''; // Sende ilçe 'state' olarak tutuluyor kanka
-                                $city = $address['city'] ?? '';
-                                $postalCode = $address['postal_code'] ? " (PK: {$address['postal_code']})" : '';
+        $fullName = $address['full_name'] ?? '';
+        $phone = $address['phone_number'] ?? '';
+        $type = $address['address_type'] ?? 'Ev';
+        $line = $address['address_line'] ?? '';
+        $district = $address['state'] ?? ''; // Sende ilçe 'state' olarak tutuluyor kanka
+        $city = $address['city'] ?? '';
+        $postalCode = isset($address['postal_code']) && $address['postal_code'] ? " (PK: {$address['postal_code']})" : '';
 
-                                // Çıktıyı adminin kargo etiketine şak diye yapıştırabileceği kıvama getiriyoruz:
-                                return "Alıcı: {$fullName} - Tlf: {$phone} [{$type} Adresi]\n" .
-                                    "Adres: {$line}\n" .
-                                    "{$district} / {$city}{$postalCode}";
-                            }),
+        // nl2br() çakıyoruz ki satır atlamaları (\n) HTML arayüzünde düzgün gözüksün mq kanka!
+        return new \Illuminate\Support\HtmlString(
+            nl2br("Alıcı: {$fullName} - Tlf: {$phone} [{$type} Adresi]\n" .
+            "Adres: {$line}\n" .
+            "{$district} / {$city}{$postalCode}")
+        );
+    }),
 
                           
                             ]),
