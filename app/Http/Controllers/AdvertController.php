@@ -67,13 +67,13 @@ class AdvertController extends Controller
                 $query->latest()->take(6);
             },'reviews.user:id,name,surname'
             ])->first();
-
+            
             if(!$advert){
                 return response()->json('Ürün bulunamadı',404);
             }
             $category = Category::findOrFail($advert->category_id);
             $stats = $this->statsService->stats($advert->id,\App\Models\Review::class);
-
+            
             $path = $this->categoryService->breadcrumb($category);
             $noneStock = $advert->product->stock>0;
             if($advert){

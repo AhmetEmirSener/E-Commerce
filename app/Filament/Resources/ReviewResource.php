@@ -155,8 +155,8 @@ class ReviewResource extends Resource
                         return $query;
                     })
                     ->placeholder('Tüm Yorumları Göster (Arşiv)'),
-                ]);
-            /*
+                ])
+          
             ->actions([
                 // ======================================================================
                 // TABLODA SATIR İÇİ "DİREKT ONAYLA" BUTONU
@@ -178,8 +178,8 @@ class ReviewResource extends Resource
                     }),
 
                 Tables\Actions\EditAction::make()->label('İncele / Düzenle'),
-            ])
-
+                ]);
+  /*
 
                 ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

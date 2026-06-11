@@ -15,7 +15,9 @@ class StatsCountService
             SUM(rating = 3) as three,
             SUM(rating = 2) as two,
             SUM(rating = 1) as one
-        ')->where('advert_id',$advertId)->first();
+        ')->where('advert_id',$advertId)
+        ->whereNotNull('approved_at') // onay almamıs olsu
+        ->first();
 
         return $stats;
     }

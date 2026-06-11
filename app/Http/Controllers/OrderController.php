@@ -303,6 +303,8 @@ class OrderController extends Controller
                     if (!$requestItem) continue;
 
 
+                    // buraya bir requestItem === orderItems id leri eşleştir full ise full cargofee refund yaptır. 
+
                     throw_if(
                         $item['status'] === 'approved' && $item['quantity'] > $requestItem->quantity,
                         \Exception::class, "Geçersiz miktar: {$requestItem->id}"

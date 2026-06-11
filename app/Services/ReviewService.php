@@ -24,11 +24,28 @@ class ReviewService
 
             // 2. İstatistikleri sadece ONAY ANINDA arttırıyoruz mq!
             $advert->increment('rating_sum', $review->rating);
-            $advert->increment('total_comments');
+            
+            if($advert->total_comments == 0 ){
+                $advert->total_comments = 1;
+            }else{
+                $advert->increment('total_comments');
+            }
 
             // 3. Yeni ortalamayı basıyoruz kanka
             $advert->avg_rating = $advert->rating_sum / $advert->total_comments;
             $advert->save();
         });
     }
+
+
+    public function store($data){
+
+        $review = Review::create($data);
+
+        return $review;
+
+    }
+
+
+
 }
