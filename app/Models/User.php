@@ -8,9 +8,10 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Tymon\JWTAuth\Contracts\JWTSubject;
+use Filament\Models\Contracts\FilamentUser;
+use Filament\Panel;
 
-
-class User extends Authenticatable implements JWTSubject
+class User extends Authenticatable implements JWTSubject, FilamentUser
 {
     use HasApiTokens, HasFactory, Notifiable; 
     protected $hidden = [
@@ -46,5 +47,12 @@ class User extends Authenticatable implements JWTSubject
             'email' => $this->email,
             'role' => $this->role,  
         ];
+    }
+
+    public function canAccessPanel(Panel $panel): bool
+    {
+        
+        return $this->role === 'Admin';
+
     }
 }

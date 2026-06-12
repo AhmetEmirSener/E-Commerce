@@ -10,7 +10,7 @@ use Filament\Tables\Table;
 
 class OrderCargoDetailRelationManager extends RelationManager
 {
-    protected static string $relationship = 'orderCargoDetails'; // Order modelindeki hasOne ilişkisi
+    protected static string $relationship = 'orderCargoDetails';
 
     protected static ?string $title = 'Kargo ve Paket Detayları';
 
@@ -18,109 +18,165 @@ class OrderCargoDetailRelationManager extends RelationManager
     {
         return $form
             ->schema([
-                Forms\Components\Select::make('cargo_company')
-                    ->label('Kargo Firması')
-                    ->options([
-                        'yurtiçi' => 'Yurtiçi Kargo',
-                        'aras' => 'Aras Kargo',
-                        'mng' => 'MNG Kargo',
-                    ])->required(),
+                Forms\Components\Grid::make(2)
+                    ->schema([
+                        Forms\Components\Select::make('cargo_company')
+                            ->label('Kargo Firması')
+                            ->options([
+                                'yurtiçi' => 'Yurtiçi Kargo',
+                                'aras' => 'Aras Kargo',
+                                'mng' => 'MNG Kargo',
+                            ])->required(),
 
-                Forms\Components\TextInput::make('tracking_code')
-                    ->label('Takip Kodu'),
+                        Forms\Components\TextInput::make('tracking_code')
+                            ->label('Takip Kodu'),
 
-                // İŞTE BURASI: Kargonun içindeki ürünler (CargoItems)
-                // OrderCargoDetail modelinde "public function cargoItems() { return $this->hasMany(CargoItem::class); }" olmalı kanka
-         Forms\Components\Repeater::make('cargoItems')
-                ->relationship('cargoItems') 
-                ->label('Bu Paketteki Ürünler')
-                ->schema([
-                    // 1. DÜZENLEME: Alan adını veritabanındaki gibi 'order_item_id' yaptık kanka
-                    Forms\Components\Select::make('order_item_id')
-                        ->label('Ürün')
-                        ->required()
-                        ->columnSpan(4)
-                        ->searchable()
-                        ->preload()
-                        // 2. DÜZENLEME: CargoItem modelindeki 'orderItem' ilişkisini hedef alıyoruz.
-                        // Ekranda da o satıra bağlı ürünün adını (product.name) gösteriyoruz.
-                        ->relationship(
-                            name: 'orderItem', 
-                            titleAttribute: 'id', // Geçici olarak id veriyoruz, aşağıda modifyQueryUsing içinde name'e çevireceğiz
-                            modifyQueryUsing: function (\Illuminate\Database\Eloquent\Builder $query, RelationManager $livewire) {
-                                $order = $livewire->getOwnerRecord();
+                        // ======================================================================
+                        // SİHİRLİ DOKUNUŞ: 4'LÜ PROFESYONEL KARGO STATÜSÜ MQ!
+                        // ======================================================================
+                        Forms\Components\Select::make('status')
+                            ->label('Kargo Durumu')
+                            ->options([
+                                'preparing' => 'Hazırlanıyor / Paketlendi',
+                                'shipped'   => 'Kargoya Verildi (Şubede)',
+                                'in_transit'=> 'Yolda / Transfer Merkezinde',
+                                'delivered' => 'Teslim Edildi',
+                            ])
+                            ->required()
+                            ->default('preparing')
+                            ->live() // Durum değiştiğinde form anında tepki versin kanka
+                            ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get) {
+                                // Sadece kargoya ilk verildiği anı yakalayıp tarihi basalım
+                                if ($state === 'shipped' && !$get('shipped_at')) {
+                                    $set('shipped_at', now()->format('Y-m-d H:i'));
+                                } 
+                                // Teslim edildiği an teslimat tarihini mermi gibi basalım
+                                elseif ($state === 'delivered') {
+                                    $set('delivered_at', now()->format('Y-m-d H:i'));
+                                }
+                            }),
 
-                                // Sadece bu siparişe ait olan order_items satırlarını getir
-                                // Ve eager loading (with) ile product ilişkisini yükle ki performans düşmesin
-                                return $query->with('product')
-                                    ->where('order_id', $order->id);
-                            }
-                        )
-                        // 3. SİHİRLİ DOKUNUŞ: Seçenek listesinde 'id' yerine ürünün adını yazdırıyoruz kanka
-                        ->getOptionLabelFromRecordUsing(fn ($record) => $record->product?->name ?? "Ürün Bulunamadı (#{$record->id})"),
-                        
-                    Forms\Components\TextInput::make('quantity')
-                        ->label('Kargolanan Adet')
-                        ->numeric()
-                        ->default(1)
-                        ->required()
-                        ->columnSpan(2),
-                ])->columns(6)->columnSpanFull(),
+                        Forms\Components\DateTimePicker::make('shipped_at')
+                            ->label('Kargoya Verilme Tarihi')
+                            ->seconds(false),
+
+                        Forms\Components\DateTimePicker::make('delivered_at')
+                            ->label('Teslim Edilme Tarihi')
+                            ->seconds(false),
+                    ]),
+
+                Forms\Components\Repeater::make('cargoItems')
+                    ->relationship('cargoItems') 
+                    ->label('Bu Paketteki Ürünler')
+                    ->schema([
+                        Forms\Components\Select::make('order_item_id')
+                            ->label('Ürün')
+                            ->required()
+                            ->columnSpan(4)
+                            ->searchable()
+                            ->preload()
+                            ->relationship(
+                                name: 'orderItem', 
+                                titleAttribute: 'id', 
+                                modifyQueryUsing: function (\Illuminate\Database\Eloquent\Builder $query, RelationManager $livewire) {
+                                    $order = $livewire->getOwnerRecord();
+                                    return $query->with('product')
+                                        ->where('order_id', $order->id);
+                                }
+                            )
+                            ->getOptionLabelFromRecordUsing(fn ($record) => $record->product?->name ?? "Ürün Bulunamadı (#{$record->id})"),
+                            
+                        Forms\Components\TextInput::make('quantity')
+                            ->label('Kargolanan Adet')
+                            ->numeric()
+                            ->default(1)
+                            ->required()
+                            ->columnSpan(2),
+                    ])->columns(6)->columnSpanFull(),
             ]);
     }
 
     public function table(Table $table): Table
     {
-
         $isAllShipped = function (RelationManager $livewire): bool {
-        $order = $livewire->getOwnerRecord();
+            $order = $livewire->getOwnerRecord();
+            $totalOrderedQuantity = $order->orderItems()->sum('quantity');
 
-        // 1. Siparişte toplam kaç adet ürün istendiğini buluyoruz
-        $totalOrderedQuantity = $order->orderItems()->sum('quantity');
+            $totalShippedQuantity = \App\Models\CargoItem::whereIn(
+                'order_cargo_detail_id', 
+                $order->orderCargoDetails()->pluck('id') 
+            )->sum('quantity');
 
-        // 2. Bu siparişe bağlı oluşturulmuş kargoların içindeki (cargo_items) toplam kargolanan adedi buluyoruz
-        // orderCargoDetails -> cargoItems ilişkisi üzerinden sum çekiyoruz kanka
-        $totalShippedQuantity = \App\Models\CargoItem::whereIn(
-            'order_cargo_detail_id', 
-            $order->orderCargoDetails()->pluck('id') // Siparişe ait tüm kargo paketlerinin ID'leri
-        )->sum('quantity');
-
-        // Eğer kargolanan miktar, sipariş edilene eşit veya büyükse true döner (Yani her şey kargolanmıştır)
-        return $totalShippedQuantity >= $totalOrderedQuantity;
+            return $totalShippedQuantity >= $totalOrderedQuantity;
         };
-
 
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('cargo_company')->label('Kargo Firması'),
                 Tables\Columns\TextColumn::make('tracking_code')->label('Takip Kodu'),
-                // Kaç çeşit ürün olduğunu saydırabiliriz kanka:
+                
+                // Durumu tabloda renk cümbüşüyle gösterelim kanka:
+                Tables\Columns\TextColumn::make('status')
+                    ->label('Kargo Durumu')
+                    ->badge()
+                    ->colors([
+                        'gray'    => 'preparing',
+                        'warning' => 'shipped',
+                        'info'    => 'in_transit', // Yolda olanlara mavi (info) çok şık durur mq
+                        'success' => 'delivered',
+                    ])
+                    ->formatStateUsing(fn ($state) => match($state) {
+                        'preparing'  => 'Hazırlanıyor',
+                        'shipped'    => 'Kargoya Verildi',
+                        'in_transit' => 'Yolda / Transfer',
+                        'delivered'  => 'Teslim Edildi',
+                        default      => $state,
+                    }),
+
                 Tables\Columns\TextColumn::make('cargo_items_count')->counts('cargoItems')->label('Paketteki Ürün Çeşidi'),
             ])
             ->headerActions([
-                // Eğer kargo kaydı yoksa oluşturma butonu çıkar
                 Tables\Actions\CreateAction::make()
-                ->label('Yeni Kargo Paketi Oluştur')
-                // SİHİRLİ DOKUNUŞ: Eğer tüm ürünler kargolandıysa bu butonu gizle kanka!
-                ->visible(fn (RelationManager $livewire) => !$isAllShipped($livewire))
-                ->after(function (RelationManager $livewire) {
-                    // Üstteki ana sipariş kaydını çekiyoruz
-                    $order = $livewire->getOwnerRecord();
-                    
-                    // Sipariş durumunu 'shipped' olarak güncelliyoruz kanka
-                    $order->update([
-                        'status' => 'shipped'
-                    ]);
-                }),
-                
+                    ->label('Yeni Kargo Paketi Oluştur')
+                    ->visible(fn (RelationManager $livewire) => !$isAllShipped($livewire))
+                    ->after(function (RelationManager $livewire, $record) {
+                        $order = $livewire->getOwnerRecord();
+                        
+                        // Kanka yeni paket oluşturulurken durumunu kontrol edip ana siparişi büküyoruz:
+                        $orderStatus = $order->status; // Varsayılan olarak siparişin mevcut durumunu tutalım
+
+                        if (in_array($record->status, ['shipped', 'in_transit'])) {
+                            $orderStatus = 'shipped';
+                        } elseif ($record->status === 'delivered') {
+                            $orderStatus = 'delivered';
+                        }
+
+                        // Sadece siparişin durumu değişmesi gerekiyorsa update atalım ki gereksiz sorgu olmasın mq
+                        if ($order->status !== $orderStatus) {
+                            $order->update(['status' => $orderStatus]);
+                        }
+                    }),
             ])
             ->actions([
                 Tables\Actions\EditAction::make()
-                ->after(function (RelationManager $livewire) {
-                    $livewire->getOwnerRecord()->update([
-                        'status' => 'shipped'
-                    ]);
-                }),
+                    ->after(function (RelationManager $livewire, $record) {
+                        $order = $livewire->getOwnerRecord();
+                        
+                        // Aynı akıllı lojistik burada da çalışıyor kanka:
+                        $orderStatus = $order->status;
+
+                       if ($record->status === 'preparing') {
+                            $orderStatus = 'paid';
+                        } elseif (in_array($record->status, ['shipped', 'in_transit'])) {
+                            $orderStatus = 'shipped';
+                        } elseif ($record->status === 'delivered') {
+                            $orderStatus = 'completed';
+                        }
+
+                        if ($order->status !== $orderStatus) {
+                            $order->update(['status' => $orderStatus]);
+                        }
+                    }),
                 Tables\Actions\DeleteAction::make(),
             ]);
     }
