@@ -7,7 +7,7 @@ use App\Models\Advert;
 use App\Models\Product;
 
 use Illuminate\Http\Request;
-
+use Illuminate\Support\Facades\Cache;
 use App\Http\Requests\CategoryStoreRequest;
 
 use App\Services\FileUploadService;
@@ -54,13 +54,16 @@ class CategoryController extends Controller
 
     public function getCategories(){
         try {
-            $categories = Category::whereNull('parent_id')
-            ->with('getChild')
-            ->get();
-            $categories->each(function ($category) {
-                $category->popular_adverts = $category->popularAdvertsWithChildren()->get();
+            $categories = Cache::remember('categories_with_children',3600, function(){
+                $categories = Category::whereNull('parent_id')
+                ->with('getChild')
+                ->get();
+                $categories->each(function ($category){
+                    $category->popular_adverts = $category->popularAdvertsWithChildren()->get();
+                });
+                return $categories;
+
             });
-            //return response()->json($categories);
             return CategoryResource::collection($categories);
                                 
         } catch (\Throwable $th) {

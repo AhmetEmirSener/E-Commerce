@@ -5,12 +5,26 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Advert;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Support\Facades\Cache;
 
 class Category extends Model
 {
     use HasFactory;
 
     protected $guarded = [];
+
+    protected static function booted(){
+        
+        static::saved(function () {
+            Cache::forget('categories_with_children');
+        });
+
+        static::deleted(function() {
+            Cache::forget('categories_with_children');
+        });
+
+
+    }
 
     public function getChild(){
         return $this->hasMany(category::class,'parent_id');

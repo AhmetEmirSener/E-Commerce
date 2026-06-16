@@ -8,6 +8,7 @@ use App\Models\SliderItems;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\Advert;
+use Illuminate\Support\Facades\Cache;
 
 use Illuminate\Http\Request;
 use App\Http\Requests\StoreSlider;
@@ -45,8 +46,10 @@ class SliderController extends Controller
 
     public function getLayout($sliderName){
         try {
-            $layout = Slider::where('page',$sliderName)->orderBy('sort')->get(['id','type', 'sort']);
 
+            $layout = Cache::remember("layout_{$sliderName}",3600,function () use ($sliderName){
+                return Slider::where('page',$sliderName)->orderBy('sort')->get(['id','type', 'sort']);
+            });
 
             return response()->json($layout);
 
@@ -58,38 +61,19 @@ class SliderController extends Controller
     
     public function getSlider($sliderId){
         try {
-            $slider = Slider::with([
+            dd(Cache::get("slider_{$sliderId}"));
+
+            $slider = Cache::remember("slider_{$sliderId}",3600,function () use ($sliderId){
+                return  Slider::with([
                 'items',
                 'items.advert.product.activeDiscount',
                 'items.category',
                 'items.campaign'
-            ])->findOrFail($sliderId);
-            
+                 ])->findOrFail($sliderId);
+            });
+
             return new SliderResource($slider);
-            /* 
-            return response()->json($slider);
-
-
-            if($sliderName==='advertPage' && $request->category_id){
-                $popularAdverts = Category::where('id',$request->category_id)->with('popularAdverts')->get();
-                return response()->json($popularAdverts);
-            }
-
-            $slider = Slider::where('page',$sliderName)->with([
-                'items',
-                'items.advert.product',
-                'items.category',
-                'items.campaign'
-            ])->get()->sortBy('sort');
-
-            if(empty($slider)){
-                return response()->json(['message'=>'Slider bulunamadı'],400);
-            }
-            
-
-            
-            return SliderResource::collection($slider);  
-            */
+         
 
         } catch (\Exception $e) {
             return response()->json(['message'=>$e->getMessage()],500);
