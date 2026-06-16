@@ -20,6 +20,7 @@ use App\Services\SlugCreateService;
 use App\Services\CategoryService;
 use App\Http\Resources\ReviewStatsResource;
 use App\Services\StatsCountService;
+use App\Services\AdvertService;
 
 class AdvertController extends Controller
 {
@@ -28,14 +29,75 @@ class AdvertController extends Controller
     protected CategoryService $categoryService;
     protected StatsCountService $statsService;
 
+    protected AdvertService $advertService;
 
-    public function __construct(SlugCreateService $slugCreateService, CategoryService $categoryService, StatsCountService $statsService){
+    public function __construct(SlugCreateService $slugCreateService, CategoryService $categoryService,
+     StatsCountService $statsService, AdvertService $advertService){
         $this->slugCreateService=$slugCreateService;
         $this->categoryService=$categoryService;
         $this->statsService= $statsService;
+        $this->advertService= $advertService;
 
     }
 
+ 
+
+    public function getAdvert($slug){
+        try {
+            $advert = $this->advertService->getBySlug($slug);
+            
+            if(!$advert){
+                return response()->json('Ürün bulunamadı',404);
+            }
+            $stats = $this->statsService->stats($advert->id,\App\Models\Review::class);
+            
+            $path = $this->categoryService->breadcrumb($advert->category);
+            
+            return response()->json([
+                'data'=>[
+                    'advert'=>new AdvertResource($advert),
+                    'bread_crumb'=>$path,
+                    'active_stock'=>$advert->product->stock>0,
+                ],
+                'stats'=>new ReviewStatsResource($stats),        
+            ]);            
+        } catch (\Throwable $th) {
+            return response()->json(['error'=>$th->getMessage()],500);
+        }
+    }
+
+
+
+    public function search(Request $request){
+        $adverts = $this->advertService->search($request->q, $request->sort_by, $request->order,
+        $request->min_price,$request->max_price);
+
+
+        return response()->json([
+            'data'=>miniAdvertResource::collection($adverts),
+            'meta' => [
+                'previous_page'=>$adverts->previousPageUrl(),
+                'current_page' => $adverts->currentPage(),
+                'last_page' => $adverts->lastPage(),
+
+                'total' => $adverts->total(),
+                ]
+        ]);
+
+    }
+
+
+    public function quickSearch(Request $request){
+
+        $adverts = $this->advertService->quickSearch($request->q);
+
+        return miniAdvertResource::collection($adverts);
+    }
+    
+
+
+
+    /* filament ile yapıldı ilerisi için adminadvert service kullan */
     public function createAdvert(AdvertRequest $request){
 
         try {
@@ -59,44 +121,6 @@ class AdvertController extends Controller
 
         }
     }
-
-    public function getAdvert($slug){
-        try {
-            $advert = Advert::where('slug',$slug)->with(['product','product.images','product.activeDiscount',
-            'reviews' => function($query) {
-                $query->latest()->take(6);
-            },'reviews.user:id,name,surname'
-            ])->first();
-            
-            if(!$advert){
-                return response()->json('Ürün bulunamadı',404);
-            }
-            $category = Category::findOrFail($advert->category_id);
-            $stats = $this->statsService->stats($advert->id,\App\Models\Review::class);
-            
-            $path = $this->categoryService->breadcrumb($category);
-            $noneStock = $advert->product->stock>0;
-            if($advert){
-                return response()->json([
-                    'data'=>[
-                        'advert'=>new AdvertResource($advert),
-                        'bread_crumb'=>$path,
-                        'active_stock'=>$noneStock,
-                    ],
-                    'stats'=>new ReviewStatsResource($stats),
-
-                    
-                ]);
-            }
-            return response()->json('Ürün bulunamadı',404);
-        } catch (\Throwable $th) {
-            return response()->json(['error'=>$th->getMessage()],500);
-        }
-    }
-
-
-
-
     public function updateAdvert(UpdateAdvertRequest $request,$id){
         try {
             $data = $request->validated();
@@ -133,99 +157,8 @@ class AdvertController extends Controller
             return response()->json(['error'=>$e->getMessage()],500);
         }
     }
+    /* filament ile yapıldı ilerisi için adminadvert service kullan */
 
-
-    public function search(Request $request){
-        $search = $request->q;
-        $allowedAdvert = ['avg_rating'];
-
-        $allowedProduct = ['price'];
-
-        $adverts = Advert::with('product.activeDiscount')->where(function ($query) use ($search){
-            $query->where('title','LIKE',"%$search%")
-            ->orWhere('description','LIKE',"%$search%");
-        })
-        ->orWhereHas('product', function ($query) use ($search){
-            $query->where('name','LIKE',"%$search%")
-            ->orWhere('features','LIKE',"%$search%");
-        })
-        ->addSelect([
-            'effective_price'=>Product::select(
-                DB::raw('COALESCE(d.discount_price, products.price)')
-            )
-            ->join('adverts as a', 'a.product_id', '=', 'products.id')
-            ->leftJoin('product_discounts as d', function($join){
-                $join->on('d.product_id', '=', 'products.id')
-                ->where('d.is_active', 1);
-            })
-            ->whereColumn('products.id', 'adverts.product_id')
-            ->limit(1)
-        ])
-        ->when(
-            in_array($request->sort_by, $allowedAdvert),
-            fn ($q) => $q->orderBy($request->sort_by, $request->order ?? 'desc')
-        )
-        ->when(
-            in_array($request->sort_by, $allowedProduct),
-            fn ($q) => $q->orderBy('effective_price', $request->order ?? 'asc')
-        )
-        ->when($request->filled('min_price') || $request->filled('max_price'),
-            function($q) use ($request){
-
-                if($request->filled('min_price') && $request->filled('max_price')){
-                    $q->havingRaw('effective_price BETWEEN ? AND ?',[
-                        $request->min_price,
-                        $request->max_price
-                    ]);             
-                }
-                elseif($request->filled('min_price')){
-                    $q->havingRaw('effective_price >= ?', [$request->min_price]);
-                }elseif($request->filled('max_price')){
-                    $q->havingRaw('effective_price <= ?', [$request->max_price]);
-                }
-            }
-        
-        )
-            
-        ->paginate(12);
-
-        return response()->json([
-            'data'=>miniAdvertResource::collection($adverts),
-            'meta' => [
-                'previous_page'=>$adverts->previousPageUrl(),
-                'current_page' => $adverts->currentPage(),
-                'last_page' => $adverts->lastPage(),
-
-                'total' => $adverts->total(),
-                ]
-        ]);
-       
-
-
-
-    }
-
-
-    public function quickSearch(Request $request){
-        $search = $request->q;
-
-        $adverts = Advert::with('product.activeDiscount')->where(function ($query) use ($search){
-            $query->where('title','LIKE',"%$search%")
-            ->orWhere('description','LIKE',"%$search%");
-        })
-        ->orWhereHas('product', function ($query) use ($search){
-            $query->where('name','LIKE',"%$search%")
-            ->orWhere('features','LIKE',"%$search%");
-        })
-        ->limit(10)
-        ->get();
-
-        return miniAdvertResource::collection($adverts);
-
-
-        
-    }
-    
 
 
 }

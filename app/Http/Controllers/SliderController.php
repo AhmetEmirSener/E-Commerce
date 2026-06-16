@@ -61,7 +61,6 @@ class SliderController extends Controller
     
     public function getSlider($sliderId){
         try {
-            dd(Cache::get("slider_{$sliderId}"));
 
             $slider = Cache::remember("slider_{$sliderId}",3600,function () use ($sliderId){
                 return  Slider::with([

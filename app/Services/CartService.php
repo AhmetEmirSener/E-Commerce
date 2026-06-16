@@ -3,6 +3,8 @@
 namespace App\Services;
 use App\Models\Cart;
 use App\Models\CargoFee;
+use Illuminate\Support\Facades\DB;
+use Exception;
 
 class CartService
 {
@@ -29,7 +31,7 @@ class CartService
             $product = $cart->product;
            // $discount = $product->activeDiscount;
 
-            $productPrice = $product->activeDiscount ? $product->activeDiscount->discount_price : $product->price;
+            $productPrice = $product->calculatedPrice();
             if($cart->price !== $productPrice){
                 $priceChanged++;
             }
@@ -80,6 +82,78 @@ class CartService
         
         
     }   
+
+    public function addOrUpdateCart($advert,$quantity,$user_id){
+
+        $maxStock = $advert->product->stock;
+     
+        $quantityToAdd=$quantity??1;
+
+        $productPrice = $advert->product->calculatedPrice();
+
+        return DB::transaction(function () use ($advert,$productPrice, $maxStock,$quantityToAdd,$user_id){
+
+            $cart = Cart::where('user_id',$user_id)->where('advert_id',$advert->id)
+            ->lockForUpdate()->first();
+
+            if($cart){
+
+                if($maxStock <= 0){
+                    $cart->delete();
+                    return [
+                        'status' => 'warning',
+                        'message' => "Ürün stokta kalmadığı için sepetinizden kaldırıldı."
+                    ];
+                }
+
+                if($cart->quantity == $maxStock){
+                    throw new Exception("Alabileceğiniz en fazla ürün miktarı sepetinizde mevcut.", 400);
+                }
+                
+                $cart->quantity+=$quantityToAdd;
+                
+                if($cart->quantity>$maxStock){
+                    $cart->quantity=$maxStock;
+                    $cart->total =$cart->quantity*$productPrice;
+                    $cart->price =$productPrice;
+                    $cart->save();
+                    return [
+                        'status' => 'warning',
+                        'message' => "Bu üründen en fazla {$maxStock} adet ekleyebilirsiniz. Sepetiniz maksimum stoğa eşitlendi."
+                    ];
+
+                   // throw new Exception("Bu üründen en fazla {$maxStock} adet ekleyebilirsiniz.", 400);
+                }
+                $cart->total =$productPrice*$cart->quantity;
+                $cart->price =$productPrice;
+                $cart->save();
+
+                return ['message' => 'Sepet güncellendi.'];
+
+            }
+            if($maxStock == 0){
+                throw new Exception("Ürün stokları bitmiştir.", 400);
+            }
+            if($quantityToAdd>$maxStock){
+                throw new Exception("Bu üründen en fazla {$maxStock} adet ekleyebilirsiniz.", 400);
+            }
+
+            
+            $cartData=[
+                'user_id'=>$user_id,
+                'advert_id'=>$advert->id,
+                'product_id'=>$advert->product->id,
+                'price'=>$productPrice,
+                'quantity'=>$quantityToAdd,
+                'total'=>$productPrice*$quantityToAdd,
+            ];
+
+            Cart::create($cartData);
+
+            return ['message' => 'Ürün sepete eklendi.'];            
+            
+        });
+    }
 
 
 

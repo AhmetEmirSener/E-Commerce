@@ -42,5 +42,10 @@ class Product extends Model
         return $this->hasOne(ProductDiscount::class)->where('is_active',1);
     }
 
+
+    public function calculatedPrice()
+    {
+        return $this->activeDiscount ? $this->activeDiscount->discount_price : $this->price;
+    }
   
 }

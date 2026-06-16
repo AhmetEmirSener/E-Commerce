@@ -7,9 +7,11 @@ use Illuminate\Http\Request;
 use App\Models\Product;
 use App\Models\Advert;
 use App\Models\CargoFee;
+use App\Http\Requests\CartStoreRequest;
 
 use App\Http\Resources\CartResource;
 use App\Services\CartService;
+use App\Services\AdvertService;
 
 use Illuminate\Support\Facades\DB;
 use Tymon\JWTAuth\Facades\JWTAuth;
@@ -19,90 +21,35 @@ use Tymon\JWTAuth\Facades\JWTAuth;
 class CartController extends Controller
 {
     protected CartService $cartService;
+    protected AdvertService $advertService;
 
 
-    public function __construct(CartService $cartService){
+    public function __construct(CartService $cartService, AdvertService $advertService){
         $this->cartService=$cartService;
+        $this->advertService=$advertService;
+
     }   
 
 
-    public function storeCart(Request $request){
+    public function storeCart(CartStoreRequest $request){
         try {
-            $request->validate([
-                'advert_slug' => 'required',
-                'quantity' => 'nullable|integer|min:1'
-            ]);
-            $advert = Advert::where('slug',$request->advert_slug)->with('product.activeDiscount')->first();
+            $validated = $request->validated();
+
+            $advert = $this->advertService->getForCartBySlug($validated['advert_slug']);
+            
             if(!$advert) return response()->json(['message'=>'Ürün eklenemedi'],404);
             if(!$advert->product) return response()->json(['message'=>'Ürün verisi eksik'],422);
             $user_id = $request->auth_user->id;
+    
+            $result = $this->cartService->addOrUpdateCart($advert,$validated['quantity'] ?? 1,$user_id);
+          
+            return response()->json($result, 200);
             
-            //$product = Product::findOrFail($request->product_id);
-
-            //$cart = Cart::where('user_id',Auth::user()->id)->where('product_id',$product->id)->first();
-            
-            $productPrice = $advert->product->activeDiscount ? $advert->product->activeDiscount->discount_price : $advert->product->price;
-            
-            //return response()->json(['advert'=>$advert,'cart'=>$cart]);
-
-            $maxStock = $advert->product->stock;
-            $quantityToAdd=$request->quantity??1;
-
-            return DB::transaction(function () use ($advert,$productPrice, $maxStock,$quantityToAdd,$user_id){
-
-            $cart = Cart::where('user_id',$user_id)->where('advert_id',$advert->id)
-            ->lockForUpdate()->first();
-
-            if($cart){
-
-                if($cart->quantity>=$maxStock){
-                    return response()->json([
-                        "message" => "Alabileceğiniz en fazla ürün miktarı sepetinizde mevcut."
-                    ], 400);
-                }
-                
-                $cart->quantity+=$quantityToAdd;
-                
-                if($cart->quantity>$maxStock){
-                    $cart->quantity=$maxStock;
-                    $cart->total =$cart->quantity*$productPrice;
-                    $cart->price =$productPrice;
-                    $cart->save();
-                    return response()->json([
-                        "message" => "Bu üründen en fazla {$maxStock} adet ekleyebilirsiniz."
-                    ], 400);
-                }
-                $cart->total =$productPrice*$cart->quantity;
-                $cart->price =$productPrice;
-                $cart->save();
-
-                return response()->json(['message'=>'Sepet güncellendi.'],200);
-
-            }
-            if($quantityToAdd>$maxStock){
-                return response()->json([
-                    "message" => "Bu üründen en fazla {$maxStock} adet ekleyebilirsiniz."
-                ], 400);
-            }
-
-            
-            $cartData=[
-                'user_id'=>$user_id,
-                'advert_id'=>$advert->id,
-                'product_id'=>$advert->product->id,
-                'price'=>$productPrice,
-                'quantity'=>$quantityToAdd,
-                'total'=>$productPrice*$quantityToAdd,
-            ];
-
-            Cart::create($cartData);
-
-            return response()->json(['message'=>'Ürün sepete eklendi.'],200);
-            
-            });
 
         } catch (\Exception $e) {
-            return response()->json([$e->getMessage()],500);
+            $statusCode = $e->getCode() == 400 ? 400 : 500;
+            return response()->json(['message' => $e->getMessage()], $statusCode);
+
         }
     }
 
