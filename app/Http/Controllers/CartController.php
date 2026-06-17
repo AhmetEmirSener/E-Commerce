@@ -40,7 +40,7 @@ class CartController extends Controller
             if(!$advert) return response()->json(['message'=>'Ürün eklenemedi'],404);
             if(!$advert->product) return response()->json(['message'=>'Ürün verisi eksik'],422);
             $user_id = $request->auth_user->id;
-    
+                
             $result = $this->cartService->addOrUpdateCart($advert,$validated['quantity'] ?? 1,$user_id);
           
             return response()->json($result, 200);

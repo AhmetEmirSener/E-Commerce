@@ -53,6 +53,7 @@ class CartService
 
         });
         $cartCount = $cart->count();
+        $quantitySum = $cart->sum('quantity');
         $noneSelected = $cart->where('is_selected',1)->isEmpty();
         if($cargoData && !$noneSelected && $cartTotal <$cargoData->free_shipping_threshold){
             $cargoFee = $cargoData->price;
@@ -67,8 +68,9 @@ class CartService
         'carts' => $cart,
         'summary'=>[
             'cartCount'=>$cartCount,
-            'subTotal'=>$subTotal,
             'productCount' => $productCount,
+            'quantitySum'=>$quantitySum,
+            'subTotal'=>$subTotal,
             'cargoFee' => $cargoData->price ?? 0,
             'cartCargoFee'=>$cargoFee,
             'originalTotal' => $originalTotal,

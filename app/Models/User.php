@@ -23,6 +23,10 @@ class User extends Authenticatable implements JWTSubject, FilamentUser
         return $this->hasMany(Cart::class)->where('is_selected',1);
     }
 
+    public function allCartItems(){
+        return $this->hasMany(Cart::class);
+    }
+
     public function orders(){
         return $this->hasMany(Order::class)->where('status','completed');
     }
