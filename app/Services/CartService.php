@@ -2,6 +2,8 @@
 
 namespace App\Services;
 use App\Models\Cart;
+use App\Models\Advert;
+
 use App\Models\CargoFee;
 use Illuminate\Support\Facades\DB;
 use Exception;
@@ -85,14 +87,13 @@ class CartService
         
     }   
 
-    public function addOrUpdateCart($advert,$quantity,$user_id){
+    public function addOrUpdateCart(Advert $advert,int $quantity,int $user_id){
 
         $maxStock = $advert->product->stock;
      
         $quantityToAdd=$quantity??1;
 
         $productPrice = $advert->product->calculatedPrice();
-
         return DB::transaction(function () use ($advert,$productPrice, $maxStock,$quantityToAdd,$user_id){
 
             $cart = Cart::where('user_id',$user_id)->where('advert_id',$advert->id)
@@ -156,6 +157,44 @@ class CartService
             
         });
     }
+
+    public function deleteCart(int $user_id,Advert $advert, bool $delete_all=false)
+    {
+
+
+        return DB::transaction(function () use ($advert,$delete_all,$user_id){
+            $cart = Cart::where('user_id',$user_id)->where('advert_id',$advert->id)
+            ->lockForUpdate()->first();
+            if(!$cart){
+                throw new Exception("Ürün sepette bulunamadı.", 400);
+                
+            }
+            if($delete_all){
+                
+                $cart->delete();
+                return ['message' => 'Ürün sepetten kaldırıldı.'];            
+            }
+            
+
+            $cart->quantity--;
+            if($cart->quantity<=0){
+
+                $cart->delete();
+                return ['message' => 'Ürün sepetten kaldırıldı.'];            
+            }
+
+            $productPrice = $advert->product->calculatedPrice();
+            $cart->syncPriceAndTotal($productPrice);
+
+            $cart->save();
+
+            return ['message' => 'Sepet güncellendi.'];            
+
+        });
+
+    }
+
+
 
 
 

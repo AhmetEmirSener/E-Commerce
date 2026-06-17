@@ -7,7 +7,8 @@ use Illuminate\Http\Request;
 use App\Models\Product;
 use App\Models\Advert;
 use App\Models\CargoFee;
-use App\Http\Requests\CartStoreRequest;
+use App\Http\Requests\CartRequests\CartStoreRequest;
+use App\Http\Requests\CartRequests\CartDeleteRequest;
 
 use App\Http\Resources\CartResource;
 use App\Services\CartService;
@@ -35,7 +36,7 @@ class CartController extends Controller
         try {
             $validated = $request->validated();
 
-            $advert = $this->advertService->getForCartBySlug($validated['advert_slug']);
+            $advert = $this->advertService->getForCartBySlug($validated['advert_slug'],['product','product.activeDiscount']);
             
             if(!$advert) return response()->json(['message'=>'Ürün eklenemedi'],404);
             if(!$advert->product) return response()->json(['message'=>'Ürün verisi eksik'],422);
@@ -53,50 +54,25 @@ class CartController extends Controller
         }
     }
 
-    public function deleteCart(Request $request){
+    public function deleteCart(CartDeleteRequest $request){
         try {
-            $request->validate([
-                'advert_slug' => 'required',
-                'delete_all'=>'nullable|boolean'
-            ]);
+            $validated = $request->validated();
             
-            $advert = Advert::where('slug',$request->advert_slug)->with('product')->first();
-
+            $advert = $this->advertService->getForCartBySlug($validated['advert_slug'],['product','product.activeDiscount']);
+            
             if(!$advert) return response()->json(['message'=>'Ürün bulunamadı'],404);   
             if(!$advert->product) return response()->json(['message'=>'Ürün verisi eksik'],422);
 
             $user_id = $request->auth_user->id;
 
-            return DB::transaction(function () use ($advert,$request,$user_id){
-            $cart = Cart::where('user_id',$user_id)->where('advert_id',$advert->id)
-            ->lockForUpdate()->first();
-            if(!$cart){
-                return response()->json(['message'=>'Ürün sepette bulunamadı.'],404);
-            }
-            if($request->delete_all){
-                $cart->delete();
-                return response()->json(['message'=>'Ürün sepetten kaldırıldı'],200);
-            }
-            
+            $result = $this->cartService->deleteCart($user_id,$advert,$validated['delete_all']?? false);
 
-            $cart->quantity--;
-            if($cart->quantity<=0){
-                $cart->delete();
-
-                return response()->json(['message'=>'Ürün sepetten kaldırıldı'],200);
-            }
-
-            $cart->total = $cart->price*$cart->quantity;
-            $cart->save();
-
-            return response()->json(['message'=>'Sepet güncellendi'],200);
-            });
-
-
+            return response()->json($result,200);
 
 
         } catch (\Exception $e) {
-            return response()->json(['error'=>$e->getMessage()],500);
+            $statusCode = $e->getCode() == 400 ? 400 : 500;
+            return response()->json(['message' => $e->getMessage()], $statusCode);
         }
     }
 

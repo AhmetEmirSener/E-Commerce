@@ -27,9 +27,9 @@ class AdvertService
         return $advert;
     }
     
-    public function getForCartBySlug(string $slug){
+    public function getForCartBySlug(string $slug, array $relations = []){
         return Advert::where('slug',$slug)
-            ->with('product.activeDiscount')
+            ->with($relations)
             ->first();
     }
 
