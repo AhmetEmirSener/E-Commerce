@@ -619,14 +619,6 @@ class UserController extends Controller
 
     }
 
-    public function cartCount(Request $request){
-        $user = $request->get('auth_user');
-        $cartCount=0;
-        if($user->cartItems){
-            $cartCount = $user->allCartItems->sum('quantity');
-        }
-        return response()->json(['count'=>$cartCount]);
-    
-    }
+
 
 }

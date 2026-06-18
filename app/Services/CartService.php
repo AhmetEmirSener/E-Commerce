@@ -3,8 +3,10 @@
 namespace App\Services;
 use App\Models\Cart;
 use App\Models\Advert;
+use App\Models\User;
 
 use App\Models\CargoFee;
+
 use Illuminate\Support\Facades\DB;
 use Exception;
 
@@ -96,8 +98,7 @@ class CartService
         $productPrice = $advert->product->calculatedPrice();
         return DB::transaction(function () use ($advert,$productPrice, $maxStock,$quantityToAdd,$user_id){
 
-            $cart = Cart::where('user_id',$user_id)->where('advert_id',$advert->id)
-            ->lockForUpdate()->first();
+            $cart = $this->getCart($user_id,$advert->id,true);
 
             if($cart){
 
@@ -160,11 +161,10 @@ class CartService
 
     public function deleteCart(int $user_id,Advert $advert, bool $delete_all=false)
     {
-
-
         return DB::transaction(function () use ($advert,$delete_all,$user_id){
-            $cart = Cart::where('user_id',$user_id)->where('advert_id',$advert->id)
-            ->lockForUpdate()->first();
+
+            $cart = $this->getCart($user_id,$advert->id,true);
+ 
             if(!$cart){
                 throw new Exception("Ürün sepette bulunamadı.", 400);
                 
@@ -194,9 +194,57 @@ class CartService
 
     }
 
+    public function changeSelected(int $user_id, Advert $advert){
+        $cart = $this->getCart($user_id,$advert->id);
+
+        if(!$cart) throw new Exception("Ürün sepette bulunamadı.", 400);
+
+        $cart->is_selected =!$cart->is_selected;
+        $cart->save();
+               
+        return ['message' => 'Sepet güncellendi.', 'is_selected' => $cart->is_selected];
+    }
 
 
 
+    public function getUsersCarts(int $user_id){
+        $carts = Cart::where('user_id',$user_id)->with('product.advert','product.activeDiscount')->get();
+
+         if($carts->isEmpty()){
+                return [
+                    'carts' => collect(),
+                    'summary' =>$this->emptySummary()
+                ];
+        }
+        return $this->updatedCart($carts);
+
+    }
+
+    private function getCart(int $user_id, int $advert_id, bool $withLock=false){
+        $query = Cart::where('user_id',$user_id)->where('advert_id',$advert_id);
+        
+        if($withLock){
+            $query->lockForUpdate();
+        }
+
+        return $query->first();
+    
+    }
+
+    public function emptySummary(){
+        return [
+            'count'=> 0,
+            'cartCount'=>0,
+            'subTotal'=> 0,
+            'cargoFee'=> 0,
+            'cargoCartFee'=> 0,
+            'total'=> 0
+        ];
+    }
+
+    public function getCartCount(User $user){
+        return $user->allCartItems()->sum('quantity');
+    }
 
     public function calculateTotalwCargoFee($total){
         $cargoData = CargoFee::where('is_active',1)->first();
