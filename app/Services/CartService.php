@@ -159,8 +159,8 @@ class CartService
         });
     }
 
-    public function deleteCart(int $user_id,Advert $advert, bool $delete_all=false)
-    {
+    public function deleteCart(int $user_id,Advert $advert, bool $delete_all=false){
+        
         return DB::transaction(function () use ($advert,$delete_all,$user_id){
 
             $cart = $this->getCart($user_id,$advert->id,true);

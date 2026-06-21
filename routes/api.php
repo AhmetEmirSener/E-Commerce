@@ -24,6 +24,7 @@ use App\Http\Controllers\InstallmentController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\OrderCargoController;
 use App\Http\Controllers\SupportRequestController;
+use App\Http\Controllers\CouponController;
 
 
 
@@ -289,6 +290,12 @@ Route::get('getCampaignDetails/{slug}',[CampaignRulesController::class,'getCampa
 
 Route::get('getCampaignAdverts/{slug}',[CampaignRulesController::class,'getCampaignAdverts']);
 
+//
+
+
+//COUPON
+
+Route::get('coupon/check',[CouponController::class,'checkCoupon'])->middleware(AuthMiddleware::class);
 
 
 // ADMIN REFUND 
