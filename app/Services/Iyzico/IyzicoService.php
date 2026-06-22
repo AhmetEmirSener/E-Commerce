@@ -103,7 +103,7 @@ class IyzicoService
 
         Log::info('Iyzico fiyat kontrolü', [
             'price'     => $data['total'],
-            'paidPrice' => $data['total'],
+            'paidPrice' => $data['paidPrice'],
             'items'     => collect($data['items'])->map(fn($i) => $i['total'])->toArray(),
             'items_sum' => collect($data['items'])->sum('total'),
         ]);

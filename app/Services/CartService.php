@@ -6,22 +6,22 @@ use App\Models\Advert;
 use App\Models\User;
 
 use App\Models\CargoFee;
+use App\Models\Coupon;
+use App\Services\CartService;
 
 use Illuminate\Support\Facades\DB;
 use Exception;
 
 class CartService
 {
-    /**
-     * Create a new class instance.
-     */
+    protected CartService $cartService;
     
-    public function __construct()
-    {   
-       
+    public function __construct(CouponService $couponService)
+    {
+        $this->couponService = $couponService;
     }
 
-    public function updatedCart($cart){
+    public function updatedCart($cart,Coupon $coupon=null){
         $originalTotal = 0;
         $discountTotal=0;
         $productCount=0;
@@ -65,10 +65,20 @@ class CartService
 
         if($noneSelected) $cargoFee=0;
 
+        $couponDiscountTotal = 0;
+        if($coupon){
+            $couponResponse = $this->couponService->checkCoupon($coupon,$cart);
+            
+            $cart= $couponResponse['cart'];
+            $couponDiscountTotal = $couponResponse['couponDiscountTotal'];
+        }
+   
+
         $subTotal = $cartTotal;
         $cartTotal = round($cartTotal+$cargoFee,2);
+        $cartTotal = round($cartTotal - $couponDiscountTotal,2);
 
-         return [
+        return [
         'carts' => $cart,
         'summary'=>[
             'cartCount'=>$cartCount,
@@ -79,6 +89,8 @@ class CartService
             'cartCargoFee'=>$cargoFee,
             'originalTotal' => $originalTotal,
             'discountTotal'=> $originalTotal >$subTotal ? $originalTotal - $subTotal : 0,
+            'couponDiscountTotal'=>$couponDiscountTotal,
+
             'total' => $cartTotal,
 
         ],

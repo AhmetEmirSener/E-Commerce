@@ -295,7 +295,7 @@ Route::get('getCampaignAdverts/{slug}',[CampaignRulesController::class,'getCampa
 
 //COUPON
 
-Route::get('coupon/check',[CouponController::class,'checkCoupon'])->middleware(AuthMiddleware::class);
+Route::get('coupon/active',[CouponController::class,'activeCoupon'])->middleware(AuthMiddleware::class);
 
 
 // ADMIN REFUND 

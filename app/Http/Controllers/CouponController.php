@@ -4,79 +4,36 @@ namespace App\Http\Controllers;
 
 use App\Models\Coupon;
 use App\Models\Cart;
+use App\Models\User;
+use App\Services\CartService;
 
 use Illuminate\Http\Request;
 
 class CouponController extends Controller
 {
-    
-    public function checkCoupon(Request $request){
+
+    protected CartService $cartService;
+
+    public function __construct(CartService $cartService){
+        $this->cartService = $cartService;
+    }
+
+    public function activeCoupon(Request $request){
         $user = $request->get('auth_user');
-        $coupon = Coupon::where('code',$request->code)->with('rules')->first();
-        $rules = $coupon->rules;
-        $cartItems = Cart::where('user_id',$user->id)->with('product','product.category')->where('is_selected',1)->get();
-
-        $cartTotal = $cartItems->sum('total');
-        $cartRule = $rules->where('field','cart')->first();
-
-        $unValidTotal =0 ;
-
-        if($cartRule){
-            $isValid = $this->isValid($cartRule,$cartTotal);
-            
-            if(!$isValid){
-                return response()->json('Kupon sepetinize uygulanamaz.',400);
-            }
+        $coupon =  Coupon::where('code',$request->coupon_code)->with('rules')->first();
+        
+        if(!$coupon){
+            return response()->json(['message'=>'Kupon kodu geçersiz.'],400);
         }
 
-        foreach($rules->where('field','!=','cart') as $rule){
-            foreach($cartItems as $item){
-            
-            $value = data_get($item,$rule->field);
-            
+        $carts = Cart::where('user_id',$user->id)->where('is_selected',1)->lockForUpdate()->with('product.advert','product.activeDiscount')->get();
 
-            $isValid = $this->isValid($rule,$value);
-
-            if(!$isValid){
-                $unValidTotal += $item->total;
-                $cartItems= $cartItems->except($item->id);
-            }
-
-            }
-
-            
-        }
-
-        $total = round($cartTotal - $unValidTotal,2);
-
-        if($total <= 0 || $cartItems->isEmpty()){ // or !$cartItems->isEmpty()
-            return response()->json('Kupon sepetinize uygulanamaz');
-        }
-        if($cartRule){
-
-            $cartRuleStatus = $this->isValid($cartRule,$total);
-            
-            if(!$cartRuleStatus){
-                return response()->json('Kupon sepetinize uygulanamaz.',400);
-            }
-
-        }
-        dd($total);
-           // Sepet summary çağırılacak
+        return $this->cartService->updatedCart($carts,$coupon);
 
     }
+    
+  
 
-    private function isValid($rule, $cartTotal){
-       return match ($rule->operator) {
-            '>'  => $cartTotal > $rule->value,
-            '>=' => $cartTotal >= $rule->value,
-            '<'  => $cartTotal < $rule->value,
-            '<=' => $cartTotal <= $rule->value,
-            '==' => $cartTotal == $rule->value,
-            '!=' => $cartTotal != $rule->value,
-            default => false,
-        };
-    }
 
 
 }

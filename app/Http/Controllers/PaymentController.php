@@ -263,10 +263,10 @@ class PaymentController extends Controller
            
 
             $freshCart = $this->cartService->updatedCart($userCart);
-            $freshTotal = $freshCart['summary']['subTotal'];
+            $freshSubTotal = $freshCart['summary']['subTotal'];
 
             
-            if (round($subTotal, 2) !== round($freshTotal, 2)){
+            if (round($subTotal, 2) !== round($freshSubTotal, 2)){
                 return response()->json([
                     'status'=>'error',
                     'key'=>'checkout',
@@ -276,13 +276,13 @@ class PaymentController extends Controller
             }
 
             $cartCargoFee = $freshCart['summary']['cartCargoFee'];
-            $paidPrice = round($cartCargoFee + $subTotal, 2);
+            $paidPrice = $freshCart['summary']['total'];
             
             // INSTALLMENT 
             $pricing = $this->calculateInstallmentPricing($data, $paidPrice);
 
-            $paidPrice       = $pricing['paidPrice'];
-            $installmentDiff = $pricing['installmentDiff'];
+            //$paidPrice       = $pricing['paidPrice'];
+            //$installmentDiff = $pricing['installmentDiff'];
             // INSTALLMENT 
             DB::beginTransaction();
             try {
@@ -290,7 +290,7 @@ class PaymentController extends Controller
                 $order = $this->createOrder($user, $freshCart['summary']['originalTotal'], $paidPrice, $cartCargoFee,$freshCart['summary']['discountTotal'],$userAddress);
 
                 $orderItems = $order->orderItems()->createMany(
-                    $userCart->map(fn($item) => [
+                    $freshCart['carts']->map(fn($item) => [ // fresh cartı ver ?
                         'product_id' => $item->product_id,
                         'quantity'   => $item->quantity,
                         'original_price'=>$item->product->price,
@@ -304,7 +304,7 @@ class PaymentController extends Controller
 
                 return [
                     'order'      => $order,
-                    'userCart'   => $userCart,
+                    'userCart'   => $freshCart['carts'],
                     'order_id'   => $order->id,
                     'total'      => $subTotal,
                     'paidPrice'  => $paidPrice,
@@ -316,7 +316,7 @@ class PaymentController extends Controller
                         'surname' => $user->surname,
                         'email'   => $user->email,
                         'address' => 'Türkiye',
-                        'city'    => $user->address->city,
+                        'city'    => $userAddress->city,
                     ],
                     'items' => $orderItems,
                     
@@ -399,6 +399,7 @@ class PaymentController extends Controller
     }
 
     public function payment(Request $request){
+        // coupon al gönder
         $data = ['installment'=>1,'save_card'=>0];
         $user = $request->get('auth_user')->load('address');
 
