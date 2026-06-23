@@ -97,10 +97,22 @@ class CartController extends Controller
         }
     }
 
-    public function getUsersCart(Request $request){
+    public function getCart(Request $request){
             
         $user_id = $request->auth_user->id;
         $cartData = $this->cartService->getUsersCarts($user_id);      
+
+        return response()->json([
+            'data'=>CartResource::collection($cartData['carts']),
+            'summary'=>$cartData['summary'],
+        ]);
+      
+    }
+
+     public function checkoutCart(Request $request){
+            
+        $user_id = $request->auth_user->id;
+        $cartData = $this->cartService->getUsersCarts($user_id,true);      
 
         return response()->json([
             'data'=>CartResource::collection($cartData['carts']),

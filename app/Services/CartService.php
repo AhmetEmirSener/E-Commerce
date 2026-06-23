@@ -219,18 +219,28 @@ class CartService
 
 
 
-    public function getUsersCarts(int $user_id){
-        $carts = Cart::where('user_id',$user_id)->with('product.advert','product.activeDiscount')->get();
+   public function getUsersCarts(int $user_id, bool $selectedOnly = false){
+        
+        $query = Cart::where('user_id', $user_id)->with('product.advert', 'product.activeDiscount');
 
-         if($carts->isEmpty()){
-                return [
-                    'carts' => collect(),
-                    'summary' =>$this->emptySummary()
-                ];
+        
+        if ($selectedOnly) {
+            $query->where('is_selected', 1);
         }
-        return $this->updatedCart($carts);
 
+        $carts = $query->get();
+
+        if($carts->isEmpty()){
+            return [
+                'carts' => collect(),
+                'summary' => $this->emptySummary()
+            ];
+        }
+        
+        return $this->updatedCart($carts);
     }
+
+
 
     private function getCart(int $user_id, int $advert_id, bool $withLock=false){
         $query = Cart::where('user_id',$user_id)->where('advert_id',$advert_id);

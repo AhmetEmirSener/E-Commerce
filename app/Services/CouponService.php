@@ -2,6 +2,8 @@
 
 namespace App\Services;
 use App\Models\Coupon;
+use App\Models\CouponUsage;
+
 use App\Models\Cart;
 
 class CouponService
@@ -25,7 +27,8 @@ class CouponService
             $isValid = $this->isValid($cartRule,$cartTotal);
             
             if(!$isValid){
-                return response()->json('Kupon sepetinize uygulanamaz.',400);
+                throw new \Exception('Kupon sepetinize uygulanamaz.');
+
             }
         }
 
@@ -46,14 +49,16 @@ class CouponService
         $total = $validItems->sum('total');
 
         if($total <= 0 || $cartItems->isEmpty()){ // or !$cartItems->isEmpty()
-            return response()->json('Kupon sepetinize uygulanamaz'); 
+            
+            throw new \Exception('Kupon sepetinize uygulanamaz.');
+
         }
         if($cartRule){
 
             $cartRuleStatus = $this->isValid($cartRule,$total);
             
             if(!$cartRuleStatus){
-                return response()->json('Kupon sepetinize uygulanamaz.',400);
+                throw new \Exception('Kupon sepetinize uygulanamaz.');
             }
 
         }
@@ -86,6 +91,23 @@ class CouponService
             
         }
         return ['cart'=>$cartItems, 'couponDiscountTotal'=>$couponDiscountTotal];
+
+    }
+
+    public function validateCoupon(string $coupon_code,int $user_id){
+        $coupon = Coupon::where('code',$coupon_code)->where('is_active',1)->with('rules')->first();
+        if(!$coupon){
+            throw new \Exception('Kupon geçersiz.');
+        }
+        if($coupon->end_date < now()){
+           throw new \Exception('Kupon süresi geçmiş.');
+        }
+        $usedCouponCounts = CouponUsage::where('user_id',$user_id)->where('coupon_id',$coupon->id)->count();
+
+        if($usedCouponCounts >= $coupon->user_usage_limit){
+            throw new \Exception('Bu kuponu zaten kullandınız.');
+        }
+        return $coupon;
 
     }
 

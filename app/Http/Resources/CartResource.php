@@ -40,6 +40,7 @@ class CartResource extends JsonResource
             'discount_price'=> $discountPrice,
             'discount_type'=>$discountType,
             'discount_value'=>$discountValue,
+            'coupon_discount_total'=>$this->coupon_discount_total
 
             
         ];

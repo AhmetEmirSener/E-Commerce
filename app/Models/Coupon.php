@@ -10,5 +10,11 @@ class Coupon extends Model
     public function rules(){
         return $this->hasMany(CouponRule::class);
     }
+    
+    public function coupon_usage(){
+        return $this->hasMany(CouponUsage::class);
+    }
+
+
 
 }

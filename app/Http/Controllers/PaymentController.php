@@ -9,6 +9,7 @@ use App\Models\OrderItem;
 use App\Models\SavedCard;
 use App\Models\UserAddress;
 use App\Models\Payment;
+use App\Models\Coupon;
 
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
@@ -24,9 +25,15 @@ use App\Http\Resources\OrderResource;
 use App\Services\CartService;
 use App\Services\Iyzico\IyzicoService;
 use App\Services\StockService;
+use App\Services\CouponService;
+
+
 
 use App\Http\Requests\CheckCardInfosRequest;
+
 use App\Http\Requests\Payment\CheckTokenPaymentRequest;
+use App\Http\Requests\Payment\PaymentRequest;
+
 use App\Services\MailService;
 
 
@@ -37,12 +44,13 @@ class PaymentController extends Controller
     protected CartService $cartService;
     protected IyzicoService $iyzicoService;
     protected StockService $stockService;
+    protected CouponService $couponService;
     
     protected MailService $mailService;
 
     public function __construct(CartService $cartService,
      IyzicoService $iyzicoService,StockService $stockService,
-     MailService $mailService
+     MailService $mailService, CouponService $couponService
      ){
         $this->cartService =$cartService;
 
@@ -51,6 +59,9 @@ class PaymentController extends Controller
         $this->stockService = $stockService;
 
         $this->mailService = $mailService;
+
+        $this->couponService = $couponService;
+
 
 
     }
@@ -232,7 +243,7 @@ class PaymentController extends Controller
         return $payment;
     }
 
-    public function buildOrder($data, $user){
+    public function buildOrder($data, $user,Coupon $coupon=null){
         try {
 
             $userAddress = $user->address;
@@ -262,9 +273,9 @@ class PaymentController extends Controller
             }
            
 
-            $freshCart = $this->cartService->updatedCart($userCart);
+            $freshCart = $this->cartService->updatedCart($userCart,$coupon);
             $freshSubTotal = $freshCart['summary']['subTotal'];
-
+          //  return response()->json($freshCart);
             
             if (round($subTotal, 2) !== round($freshSubTotal, 2)){
                 return response()->json([
@@ -278,12 +289,14 @@ class PaymentController extends Controller
             $cartCargoFee = $freshCart['summary']['cartCargoFee'];
             $paidPrice = $freshCart['summary']['total'];
             
+            $iyzicoPrice = collect($freshCart['carts'])->sum('total');
             // INSTALLMENT 
             $pricing = $this->calculateInstallmentPricing($data, $paidPrice);
 
             //$paidPrice       = $pricing['paidPrice'];
             //$installmentDiff = $pricing['installmentDiff'];
             // INSTALLMENT 
+            
             DB::beginTransaction();
             try {
 
@@ -306,7 +319,7 @@ class PaymentController extends Controller
                     'order'      => $order,
                     'userCart'   => $freshCart['carts'],
                     'order_id'   => $order->id,
-                    'total'      => $subTotal,
+                    'total'      => $iyzicoPrice,  // $subTotal dı
                     'paidPrice'  => $paidPrice,
                     'installment'=> $data['installment'] ?? 1,
                     'save_card'  => $data['save_card'] ?? 0,
@@ -398,14 +411,24 @@ class PaymentController extends Controller
         ]);
     }
 
-    public function payment(Request $request){
-        // coupon al gönder
-        $data = ['installment'=>1,'save_card'=>0];
+    public function payment(PaymentRequest $request){
+
+        $coupon_code = $request->validated('coupon_code');
         $user = $request->get('auth_user')->load('address');
 
-        $orderData = $this->buildOrder($data,$user);
-        if ($orderData instanceof JsonResponse) return $orderData; 
+        if($coupon_code){
+            try{
+                $coupon = $this->couponService->validateCoupon($coupon_code,$user->id);
+            }catch (\Exception $e) {
+                return response()->json([
+                    'message' => $e->getMessage()
+                ], 400); 
+            }
+        }
+        $data = ['installment'=>1,'save_card'=>0];
 
+        $orderData = $this->buildOrder($data,$user,$coupon ?? null);
+        if ($orderData instanceof JsonResponse) return $orderData; 
         $result = $this->iyzicoService->initializeCheckoutForm([
             ...$orderData,
             'ip'=> $request->ip(),

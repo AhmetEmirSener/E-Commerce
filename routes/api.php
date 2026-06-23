@@ -122,7 +122,10 @@ Route::post('/storeCart',[CartController::class,'storeCart'])->middleware(AuthMi
 
 Route::post('/deleteCart',[CartController::class,'deleteCart'])->middleware(AuthMiddleware::class);
 
-Route::get('/getUsersCart',[CartController::class,'getUsersCart'])->middleware(AuthMiddleware::class);
+Route::get('/getCart',[CartController::class,'getCart'])->middleware(AuthMiddleware::class);
+
+Route::get('/checkout/cart',[CartController::class,'checkoutCart'])->middleware(AuthMiddleware::class);
+
 
 Route::post('/changeSelected',[CartController::class,'changeSelected'])->middleware(AuthMiddleware::class);
 //CART
@@ -295,7 +298,7 @@ Route::get('getCampaignAdverts/{slug}',[CampaignRulesController::class,'getCampa
 
 //COUPON
 
-Route::get('coupon/active',[CouponController::class,'activeCoupon'])->middleware(AuthMiddleware::class);
+Route::post('coupon/apply',[CouponController::class,'activeCoupon'])->middleware(AuthMiddleware::class);
 
 
 // ADMIN REFUND 
