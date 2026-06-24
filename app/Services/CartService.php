@@ -94,7 +94,8 @@ class CartService
             'total' => $cartTotal,
 
         ],
-        'priceChanged'=>$priceChanged ?? 0
+        'priceChanged'=>$priceChanged ?? 0,
+        'coupon'=>$coupon
   
         ];
         

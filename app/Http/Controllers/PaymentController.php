@@ -274,6 +274,7 @@ class PaymentController extends Controller
            
 
             $freshCart = $this->cartService->updatedCart($userCart,$coupon);
+
             $freshSubTotal = $freshCart['summary']['subTotal'];
           //  return response()->json($freshCart);
             
@@ -301,7 +302,11 @@ class PaymentController extends Controller
             try {
 
                 $order = $this->createOrder($user, $freshCart['summary']['originalTotal'], $paidPrice, $cartCargoFee,$freshCart['summary']['discountTotal'],$userAddress);
+                if($freshCart['coupon'] ?? false){
+                    $this->couponService->createCouponUsage($freshCart['coupon'],$order->id,$user->id);
 
+                }
+              
                 $orderItems = $order->orderItems()->createMany(
                     $freshCart['carts']->map(fn($item) => [ // fresh cartı ver ?
                         'product_id' => $item->product_id,

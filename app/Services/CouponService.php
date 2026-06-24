@@ -5,6 +5,7 @@ use App\Models\Coupon;
 use App\Models\CouponUsage;
 
 use App\Models\Cart;
+use Illuminate\Support\Facades\Cache;
 
 class CouponService
 {
@@ -90,7 +91,7 @@ class CouponService
             }
             
         }
-        return ['cart'=>$cartItems, 'couponDiscountTotal'=>$couponDiscountTotal];
+        return ['cart'=>$cartItems, 'couponDiscountTotal'=>$couponDiscountTotal, 'coupon'=>$coupon];
 
     }
 
@@ -102,15 +103,101 @@ class CouponService
         if($coupon->end_date < now()){
            throw new \Exception('Kupon süresi geçmiş.');
         }
-        $usedCouponCounts = CouponUsage::where('user_id',$user_id)->where('coupon_id',$coupon->id)->count();
-
-        if($usedCouponCounts >= $coupon->user_usage_limit){
-            throw new \Exception('Bu kuponu zaten kullandınız.');
+        if($coupon->usage_limit <= 0){
+           throw new \Exception('Kupon tükendi.');
         }
+       
+        $completedUsagesCount = CouponUsage::where('user_id', $user_id)->where('coupon_id', $coupon->id)
+        ->where('status', 'completed')
+        ->count();
+
+        if($completedUsagesCount >= $coupon->user_usage_limit){
+            throw new \Exception('Bu kuponun kullanım sınırına ulaştınız.');
+        }
+
         return $coupon;
 
     }
 
+
+    public function createCouponUsage(Coupon $coupon,int $order_id, int $user_id){
+        $reserveMinutes = $coupon->reserve_minutes ?? 15;
+        $rateKey = 'coupon_rate_limit_user:' . $user_id . '_coupon:' . $coupon->id;
+        
+        
+        $cache = Cache::get($rateKey);
+
+        if (!$cache) {
+            Cache::put($rateKey, ['attempts' => 1], now()->addMinutes($reserveMinutes));
+        } else {
+            if ($cache['attempts'] >= 3) {
+                
+                throw new \Exception('Bu kuponun işlem sınırına ulaştınız, lütfen ' . $reserveMinutes . ' dakika sonra tekrar deneyiniz.');
+            }
+            
+            $cache['attempts']++;
+
+            Cache::put($rateKey, $cache, now()->addMinutes($reserveMinutes));
+        }
+
+        $usedCoupon = CouponUsage::where('user_id',$user_id)->where('coupon_id',$coupon->id)->first();
+
+        if($usedCoupon && in_array($usedCoupon->status, ['pending', 'cancelled'])) {
+   
+            if ($usedCoupon->status === 'cancelled') {
+                // cancelled edilirken kesinlikle increase olmalı 
+                $this->decreaseCouponLimit($coupon); 
+            }
+            $currentExpiry = \Carbon\Carbon::parse($usedCoupon->expires_at);
+
+            $threshold = max(2, $reserveMinutes * 0.2);
+
+            if($currentExpiry->isPast()){
+                $baseTime = now()->addMinutes(max(10, $reserveMinutes * 0.5));
+            }else{
+                $remainingMinutes = now()->diffInMinutes($currentExpiry, false);
+                if ($remainingMinutes <= 5) {
+                    
+                    $baseTime = $currentExpiry->addMinutes($threshold);                
+                } else {
+                    $baseTime = $currentExpiry;
+            }
+            }
+            
+
+            $usedCoupon->expires_at = $baseTime;
+            $usedCoupon->status = 'pending';
+            $usedCoupon->order_id = $order_id;
+            $usedCoupon->save();
+            return $usedCoupon;
+        }
+        
+        $couponUsage = CouponUsage::create([
+            'user_id'=>$user_id,
+            'order_id'=>$order_id,
+            'coupon_id'=>$coupon->id,
+            'status'=>'pending',
+            'expires_at' => now()->addMinutes($coupon->reserve_minutes ?? 15)            
+        ]);
+        $this->decreaseCouponLimit($coupon);
+        return $couponUsage;
+    }
+
+    public function decreaseCouponLimit(Coupon $coupon){
+        if($coupon->usage_limit <= 0){
+            throw new \Exception('Kupon tükendi.');
+            
+        }
+
+        $coupon->usage_limit--;
+        $coupon->save();
+    }
+
+    public function increaseCouponLimit(Coupon $coupon){
+        $coupon->usage_limit++;
+        $coupon->save();
+    }
+    
 
 
  
