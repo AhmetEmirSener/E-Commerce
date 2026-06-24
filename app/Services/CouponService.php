@@ -122,48 +122,55 @@ class CouponService
 
     public function createCouponUsage(Coupon $coupon,int $order_id, int $user_id){
         $reserveMinutes = $coupon->reserve_minutes ?? 15;
-        $rateKey = 'coupon_rate_limit_user:' . $user_id . '_coupon:' . $coupon->id;
-        
-        
-        $cache = Cache::get($rateKey);
-
-        if (!$cache) {
-            Cache::put($rateKey, ['attempts' => 1], now()->addMinutes($reserveMinutes));
-        } else {
-            if ($cache['attempts'] >= 3) {
-                
-                throw new \Exception('Bu kuponun işlem sınırına ulaştınız, lütfen ' . $reserveMinutes . ' dakika sonra tekrar deneyiniz.');
-            }
-            
-            $cache['attempts']++;
-
-            Cache::put($rateKey, $cache, now()->addMinutes($reserveMinutes));
-        }
+  
 
         $usedCoupon = CouponUsage::where('user_id',$user_id)->where('coupon_id',$coupon->id)->first();
 
         if($usedCoupon && in_array($usedCoupon->status, ['pending', 'cancelled'])) {
    
             if ($usedCoupon->status === 'cancelled') {
-                // cancelled edilirken kesinlikle increase olmalı 
+
                 $this->decreaseCouponLimit($coupon); 
             }
+
             $currentExpiry = \Carbon\Carbon::parse($usedCoupon->expires_at);
 
             $threshold = max(2, $reserveMinutes * 0.2);
-
+            $needsExtension = false;
             if($currentExpiry->isPast()){
                 $baseTime = now()->addMinutes(max(10, $reserveMinutes * 0.5));
+                $needsExtension = true;
             }else{
                 $remainingMinutes = now()->diffInMinutes($currentExpiry, false);
                 if ($remainingMinutes <= 5) {
                     
-                    $baseTime = $currentExpiry->addMinutes($threshold);                
+                    $baseTime = $currentExpiry->addMinutes($threshold);    
+                    $needsExtension = true;            
                 } else {
                     $baseTime = $currentExpiry;
             }
             }
             
+            if($needsExtension){
+                $rateKey = 'coupon_rate_limit_user:' . $user_id . '_coupon:' . $coupon->id;
+        
+        
+                $cache = Cache::get($rateKey);
+
+                if (!$cache) {
+                    Cache::put($rateKey, ['attempts' => 1], now()->addMinutes($reserveMinutes));
+                } else {
+                    if ($cache['attempts'] >= 3) {
+                        // return $usedCoupon;  kupon rezerve 5dk'den az kaldı izin ver ? verme ? kararlaştır sonra.
+                         
+                        throw new \Exception('Bu kuponun işlem sınırına ulaştınız, lütfen ' . $reserveMinutes . ' dakika sonra tekrar deneyiniz.');
+                    }
+                    
+                    $cache['attempts']++;
+
+                    Cache::put($rateKey, $cache, now()->addMinutes($reserveMinutes));
+                }
+            }
 
             $usedCoupon->expires_at = $baseTime;
             $usedCoupon->status = 'pending';
