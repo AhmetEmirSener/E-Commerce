@@ -11,5 +11,7 @@ Artisan::command('inspire', function () {
 
 Schedule::command('app:campaign-expires')->everyMinute();
 
+Schedule::command('app:clear-expired-coupons')->everyMinute();
+
 Schedule::command('app:delete-pending-orders')->daily();
 

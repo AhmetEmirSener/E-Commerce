@@ -34,7 +34,7 @@ class CampaignExpires extends Command
             ->with('activeDiscount')
             ->get();
 
-            foreach($products as $product){
+            foreach($products as $product){ // şunu bi queue at amk 
                 if($product->activeDiscount){
                     $product->activeDiscount->is_active = false;
                     $product->activeDiscount->save();
