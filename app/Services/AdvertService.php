@@ -45,6 +45,11 @@ class AdvertService
             $query->where('title','LIKE',"%$search%")
             ->orWhere('description','LIKE',"%$search%");
         })
+        ->orderBy(
+            Product::selectRaw('stock > 0')
+                ->whereColumn('products.id', 'adverts.product_id'),
+            'desc'
+        )
         ->orWhereHas('product', function ($query) use ($search){
             $query->where('name','LIKE',"%$search%")
             ->orWhere('features','LIKE',"%$search%");
@@ -59,6 +64,7 @@ class AdvertService
                 ->where('d.is_active', 1);
             })
             ->whereColumn('products.id', 'adverts.product_id')
+            
             ->limit(1)
         ])
         ->when(
