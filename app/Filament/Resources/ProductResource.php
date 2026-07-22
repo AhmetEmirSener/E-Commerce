@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Filament\Forms\Components\Wizard;
 use Filament\Forms\Components\Wizard\Step;
 use Filament\Support\Enums\Alignment;
+use App\Services\ProductService;
 
 class ProductResource extends Resource
 {
@@ -119,13 +120,7 @@ class ProductResource extends Resource
                                 ->visible(fn ($livewire) => $livewire instanceof \App\Filament\Resources\ProductResource\Pages\CreateProduct),
                                 
                             // SADECE DÜZENLEME (EDIT) SAYFASINDA GÖRÜNECEK ALANLAR
-                            Forms\Components\TextInput::make('price')
-                                ->label('Fiyat')
-                                ->required()
-                                ->numeric()
-                                ->prefix('₺')
-                                ->visible(fn ($livewire) => $livewire instanceof \App\Filament\Resources\ProductResource\Pages\EditProduct),
-
+               
                             Forms\Components\Grid::make(2)
                                 ->schema([
                                     Forms\Components\TextInput::make('current_active_discount')
@@ -163,6 +158,60 @@ class ProductResource extends Resource
                                             return number_format(max(0, $discountedPrice), 2, ',', '.') . ' TL';
                                         }),
                                 ])
+                                ->visible(fn ($livewire) => $livewire instanceof \App\Filament\Resources\ProductResource\Pages\EditProduct),
+                                Forms\Components\Grid::make(3)
+                                ->schema([
+                                    Forms\Components\TextInput::make('price')
+                                        ->label('Satış Fiyatı (KDV Dahil)')
+                                        ->required()
+                                        ->numeric()
+                                        ->prefix('₺')
+                                        ->live(onBlur: true) // Kullanıcı inputtan çıkınca (tıklamayı bırakınca) tetikler
+                                        ->afterStateUpdated(function (Forms\Get $get, Forms\Set $set, $state) {
+                                            $price = (float) $state;
+                                            $rate = (float) $get('vat_rate');
+                                            
+                                            if ($price > 0 && $rate > 0) {
+                                                // Konuştuğumuz doğru KDV tutarı hesaplama formülü
+                                                $vatAmount = app(ProductService::class)->calculateVatAmount($price, $rate);
+                                                $set('vat_amount', $vatAmount); // vat_amount alanına anlık yazdırır
+                                            } else {
+                                                $set('vat_amount', 0);
+                                            }
+                                        }),
+
+                                    Forms\Components\Select::make('vat_rate')
+                                        ->label('KDV Oranı (%)')
+                                        ->options([
+                                            0 => '%0',
+                                            1 => '%1',
+                                            10 => '%10',
+                                            20 => '%20',
+                                        ])
+                                        ->default('20')
+                                        ->required()
+                                        ->live() // Oran değiştiğinde de anlık tetiklenir
+                                        ->afterStateUpdated(function (Forms\Get $get, Forms\Set $set, $state) {
+                                            $price = (float) $get('price');
+                                            $rate = (float) $state;
+                                            
+                                            if ($price > 0 && $rate > 0) {
+                                                $vatAmount = app(ProductService::class)->calculateVatAmount($price, $rate);
+                                                $set('vat_amount', $vatAmount);
+                                            } else {
+                                                $set('vat_amount', 0);
+                                            }
+                                        }),
+
+                                    Forms\Components\TextInput::make('vat_amount')
+                                        ->label('Hesaplanan KDV Tutarı')
+                                        ->numeric()
+                                        ->prefix('₺')
+                                        ->readOnly() // Kullanıcı elle bozamasın, sadece sistem hesaplasın
+                          
+                                ])
+                                // KÜÇÜK BİR UYARI: Orijinal kodunda fiyata sadece EDIT sayfasında görünürlük vermişsin. 
+                                // Ürün oluştururken de (CREATE) fiyat girebilmek için aşağıdaki visible koşulunu istersen kaldırabilirsin.
                                 ->visible(fn ($livewire) => $livewire instanceof \App\Filament\Resources\ProductResource\Pages\EditProduct),
 
                                 // BAĞIMSIZ DEV BUTONLAR

@@ -5,6 +5,7 @@ use App\Models\Category;
 use App\Models\Advert;
 use App\Jobs\UpdateCampaignDiscountJob;
 
+use App\Services\ProductService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 use Illuminate\Database\Eloquent\Model;
@@ -23,7 +24,27 @@ class Product extends Model
             if($product->isDirty('price') && $product->is_campaign_on){
                 UpdateCampaignDiscountJob::dispatch($product);
             }
+         
         });
+
+        static::saving(function ($product){
+
+            if ($product->isDirty('price') || $product->isDirty('vat_rate')) {
+            
+                $price = (float) $product->price;
+                $rate = (float) $product->vat_rate;
+    
+                if ($price > 0 && $rate >= 0) {
+ 
+                    $productService = app(ProductService::class);
+                    
+                    $product->vat_amount = $productService->calculateVatAmount($price, $rate);
+                } else {
+                    $product->vat_amount = 0;
+                }
+            }
+        });
+      
     }
 
     
