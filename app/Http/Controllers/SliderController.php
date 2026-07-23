@@ -104,9 +104,14 @@ class SliderController extends Controller
             $advert = Advert::where('slug',$slug)->first();
             $product = Product::findOrFail($advert->product_id);
             $features = collect($product->features)->pluck('key')->toArray();
+
             if(!$features){
-                return response()->json([]);
+                $adverts = Advert::limit(10)->get();
+                return MiniAdvertResource::collection($adverts);
+
+
             }
+            
             $adverts  = Advert::where('id','!=',$advert->id)->whereHas('product', function($q) use($advert,$features){
 
                 $q->where(function($qq) use ($features){
@@ -119,6 +124,7 @@ class SliderController extends Controller
             ->orderByDesc('views')
             ->limit(10)
             ->get();
+      
 
             return MiniAdvertResource::collection($adverts);
 
