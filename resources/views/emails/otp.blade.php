@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YunusPet Doğrulama</title>
+    <title>GurmePet Doğrulama</title>
     <style>
         /* E-posta Client Resetleri */
         body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
@@ -153,7 +153,7 @@
                 <a href="{{ url('/') }}" style="text-decoration: none;">
                     <!-- Logo boyutu e-ticaret standartları için width="120" idealdir -->
                     <img src="{{ asset('storage/favLast.png') }}" 
-                         alt="YunusPet" 
+                         alt="GurmePet" 
                          width="120" 
                          style="display: block; margin: 0 auto; border: 0; width: 120px; height: auto;">
                 </a>

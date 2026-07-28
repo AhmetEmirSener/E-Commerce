@@ -2,14 +2,14 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 
     <url>
-        <loc>https://yunuspet.com</loc>
+        <loc>https://gurmepet.com.tr</loc>
         <changefreq>daily</changefreq>
         <priority>1.0</priority>
     </url>
 
     @foreach($categories as $category)
     <url>
-        <loc>https://yunuspet.com/kategori/{{ $category->slug }}</loc>
+        <loc>https://gurmepet.com.tr/kategori/{{ $category->slug }}</loc>
         <lastmod>{{ $category->updated_at->toAtomString() }}</lastmod>
         <changefreq>weekly</changefreq>
         <priority>0.8</priority>
@@ -18,7 +18,7 @@
 
     @foreach($adverts as $advert)
     <url>
-        <loc>https://yunuspet.com/{{ $advert->slug }}</loc>
+        <loc>https://gurmepet.com.tr/{{ $advert->slug }}</loc>
         <lastmod>{{ $advert->updated_at->toAtomString() }}</lastmod>
         <changefreq>weekly</changefreq>
         <priority>0.9</priority>

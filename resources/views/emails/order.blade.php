@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Siparişiniz Alındı - YunusPet</title>
+    <title>Siparişiniz Alındı - GurmePet</title>
     <style>
         /* Temel E-posta Sıfırlamaları */
         body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
@@ -87,7 +87,7 @@
             <div class="card-header">
                 <a href="{{ url('/') }}" style="text-decoration: none;">
                     <img src="{{ asset('favLast.png') }}" 
-                         alt="YunusPet" 
+                         alt="GurmePet" 
                          width="120" 
                          style="display: block; margin: 0 auto; border: 0; width: 120px; height: auto;">
                 </a>
@@ -192,7 +192,7 @@
             <div class="card-footer">
                 <p class="footer-text">
                     Siparişiniz kargoya verildiğinde size tekrar haber vereceğiz. <br> 
-                    Sorularınız için <a href="{{ url('/iletisim') }}" class="footer-link">Müşteri Hizmetleri</a> ile iletişime geçebilirsiniz.
+                    Sorularınız için <a href="gurmepet.com.tr/yardim/iletisim" class="footer-link">Müşteri Hizmetleri</a> ile iletişime geçebilirsiniz.
                 </p>
             </div>
 
