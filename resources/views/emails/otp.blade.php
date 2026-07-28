@@ -152,7 +152,7 @@
             <div class="card-header">
                 <a href="{{ url('/') }}" style="text-decoration: none;">
                     <!-- Logo boyutu e-ticaret standartları için width="120" idealdir -->
-                    <img src="{{ asset('storage/favLast.png') }}" 
+                    <img src="{{ asset('storage/fav-gurme.png') }}" 
                          alt="GurmePet" 
                          width="120" 
                          style="display: block; margin: 0 auto; border: 0; width: 120px; height: auto;">

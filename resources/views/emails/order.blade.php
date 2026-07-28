@@ -86,7 +86,7 @@
             <!-- HEADER -->
             <div class="card-header">
                 <a href="{{ url('/') }}" style="text-decoration: none;">
-                    <img src="{{ asset('favLast.png') }}" 
+                    <img src="{{ asset('fav-gurme.png') }}" 
                          alt="GurmePet" 
                          width="120" 
                          style="display: block; margin: 0 auto; border: 0; width: 120px; height: auto;">
