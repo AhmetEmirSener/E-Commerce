@@ -17,6 +17,11 @@ jobs:
       - name: Kodu Klonla
         uses: actions/checkout@v4
 
+      - name: Küçük harfli kullanıcı adı üret
+        id: lowercase
+        run: echo "owner=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+
+
       - name: QEMU Kurulumu (ARM emülasyonu için)
         uses: docker/setup-qemu-action@v3
 
