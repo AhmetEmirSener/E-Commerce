@@ -1,4 +1,15 @@
+.env
+.env.*
 vendor
 node_modules
 .git
-storage/logs
+.gitignore
+storage/logs/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+tests
+.phpunit.result.cache
+README.md
+Dockerfile
+.dockerignore
