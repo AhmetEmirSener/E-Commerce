@@ -210,7 +210,10 @@ class CampaignRulesController extends Controller
     // getCampaignADverts ile birleştirildi belki sonra kullanılır kalsın
     public function getCampaignDetails($slug){
         try {
-            $campaign=Campaign::where('slug',$slug)->firstOrFail();
+            $campaign=Campaign::where('slug',$slug)->first();
+            if(!$campaign){
+                return response()->json(['message'=>'Kampanya bulunamadı'],400);
+            }
 
             return new CampaignResource($campaign);
         
@@ -222,7 +225,11 @@ class CampaignRulesController extends Controller
 
     public function getCampaignAdverts(Request $request,$slug){
         try {
-            $campaign=Campaign::where('slug',$slug)->firstOrFail();
+            $campaign=Campaign::where('slug',$slug)->first();
+            if(!$campaign){
+                return response()->json(['message'=>'Kampanya bulunamadı'],400);
+            }
+
 
             $allowedAdvert = ['avg_rating'];
             $allowedProduct = ['price'];
