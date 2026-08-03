@@ -24,8 +24,9 @@ class AdminPanelProvider extends PanelProvider
     {
         return $panel
             ->default()
+            ->domain('admin.gurmepet.com.tr')
             ->id('admin')
-            ->path('admin')
+            ->path('')
             ->login()
             ->brandName('GurmePet')
             ->colors([
