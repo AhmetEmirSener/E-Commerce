@@ -38,4 +38,4 @@ RUN composer dump-autoload --optimize
 RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
 
 EXPOSE 9000
-CMD ["php-fpm"]
+CMD sh -c "cp -r /var/www/public/* /var/www/public_shared/ 2>/dev/null; php-fpm"
